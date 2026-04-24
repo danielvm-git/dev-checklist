@@ -73,7 +73,7 @@ Then restart Claude Code. `stack-check` will **WARN** if `rtk` is missing unless
 
 ## See also (other IDEs)
 
-- **[Cursor and Google Antigravity](cursor-and-antigravity.md)** — no Claude plugin; use the integrated terminal, `PATH`, optional RTK for Cursor/Antigravity.
+- **[Cursor and Google Antigravity](cursor-and-antigravity.md)** — no Claude plugin; use **[install from GitHub](../install.sh)** (same for Cursor and Antigravity: clone + `PATH`), then the integrated terminal. Optional RTK.
 
 ## References
 

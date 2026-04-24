@@ -1,67 +1,81 @@
-# Cursor and Google Antigravity
+# Cursor and Google Antigravity — install from GitHub
 
-`stack-check` is a **bash** script. **Claude Code** is the only environment this repo ships a **native plugin** for (see [claude-code.md](claude-code.md)). **Cursor** and **Google Antigravity** do not load that plugin format—use the **integrated terminal** (or your normal shell) and either **put the script on `PATH`** or call it with a **full path**.
+**Claude Code** can use the [native plugin](claude-code.md). **Cursor** and **Google Antigravity** do not support that plugin format, so the supported way to “install from GitHub” is the same for both: run the **install script** from this repository (clone + add `stack-check` to your shell `PATH`).
 
-Repository: [danielvm-git/dev-checklist](https://github.com/danielvm-git/dev-checklist)
+**Repo:** [github.com/danielvm-git/dev-checklist](https://github.com/danielvm-git/dev-checklist)
 
-## Cursor
+## 1) Install from GitHub (same command for Cursor and Antigravity)
 
-1. **Install the tool** (clone recommended so `readiness-checklist.md` sits next to `stack-check`):
+**Option A — one-liner** (fetches [install.sh](https://raw.githubusercontent.com/danielvm-git/dev-checklist/main/install.sh) from `main`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/danielvm-git/dev-checklist/main/install.sh | bash
+```
+
+Review the script first if you prefer not to pipe to `bash`:
+
+```bash
+curl -fsSL -o /tmp/dev-checklist-install.sh https://raw.githubusercontent.com/danielvm-git/dev-checklist/main/install.sh
+less /tmp/dev-checklist-install.sh
+bash /tmp/dev-checklist-install.sh
+```
+
+**Option B — clone, then run the script locally**
+
+```bash
+git clone https://github.com/danielvm-git/dev-checklist.git
+cd dev-checklist
+chmod +x install.sh
+./install.sh
+```
+
+**What it does**
+
+- Clones (or `git pull` updates) into **`~/.local/share/dev-checklist`** — override with `DEV_CHECKLIST_HOME=/other/path` if needed.
+- Appends a small **`export PATH=…/dev-checklist:$PATH`** block to **`.zshrc`** and/or **`.bashrc`** (only if you don’t already have a `dev-checklist` line).
+- Makes `stack-check` executable.
+- **Open a new terminal** (or `source ~/.zshrc`) so `stack-check` is on `PATH`.
+
+**Uninstall:** remove the two-line block marked `dev-checklist` from your rc file, then `rm -rf ~/.local/share/dev-checklist` (or your `DEV_CHECKLIST_HOME` path).
+
+## 2) Use it in Cursor
+
+1. After install, open **Terminal** in Cursor (`` Ctrl+` ``).
+2. `cd` to your **application** repo (the one you are checking, not the install folder).
+3. Run:
 
    ```bash
-   git clone https://github.com/danielvm-git/dev-checklist.git
+   stack-check
    ```
 
-2. **Run it from your app repo** in Cursor’s **Terminal** (`` Ctrl+` `` / View → Terminal):
+4. **Rules (Layer 2):** add [`.cursorrules`](https://docs.cursor.com/context/rules-for-ai), [`.cursor/rules/`](https://docs.cursor.com), or `AGENTS.md` in that app; `stack-check` looks for those at the repo root.
 
-   ```bash
-   cd /path/to/your/application
-   /path/to/dev-checklist/stack-check
-   ```
+5. **Optional — “Remote rules” from GitHub in Cursor** (editor rules, not the same as `stack-check`): *Cursor Settings → Rules → Add → Remote (GitHub)* can sync rule **files** from a repo. That does not install the `stack-check` binary; use **Option A/B** above for the tool itself.
 
-3. **Optional — `stack-check` without a full path** — add the clone directory or a `bin` symlink to your shell `PATH` in `~/.zshrc` / `~/.bashrc` (same idea as [README.md](../README.md#without-the-plugin-plain-git)).
-
-4. **Layer 2 / rules** — Cursor expects project rules (e.g. [`.cursorrules`](https://docs.cursor.com/context/rules-for-ai) or `AGENTS.md`). `stack-check` already looks for `.cursorrules`, `instructions.md`, `.clinerules`, or `AGENTS.md` at the repo root.
-
-5. **Optional — RTK (token compression for shell output)** — if you use [RTK](https://github.com/rtk-ai/rtk), the project supports Cursor hooks, e.g.:
+6. **Optional — RTK** (shell output compression, separate from this repo):
 
    ```bash
    rtk init -g --agent cursor
    ```
 
-   Then restart Cursor. This is independent of `stack-check`; it only affects how noisy shell output is.
+   Then restart Cursor. See [rtk-ai/rtk](https://github.com/rtk-ai/rtk).
 
-## Google Antigravity
+## 3) Use it in Google Antigravity
 
-Antigravity is an **agent-first IDE** (VS Code–based) with its own **terminal execution** and **allow/deny lists**. There is no Claude Code–style plugin install for `stack-check` here—treat it like **plain shell + path**.
-
-1. **Clone** this repo (or download `stack-check` + keep `readiness-checklist.md` beside it).
-
-2. In the **integrated terminal**, from your **application** workspace root:
-
-   ```bash
-   /path/to/dev-checklist/stack-check
-   ```
-
-3. **If the agent must run `stack-check` without approval** — add the exact command (or a stable path) to **Terminal allow list** in Antigravity settings (see [Google’s Antigravity getting started](https://codelabs.developers.google.com/getting-started-google-antigravity) — terminal policy / allow list). If you use “Request review” for all commands, approve the first run or pre-allow `stack-check`.
-
-4. **Shared rules** — Antigravity reads **[AGENTS.md](https://agents.md)** at the project root (same portable file many tools use). Putting `AGENTS.md` in your app satisfies the “agent rules” signal in `stack-check` alongside Cursor-style files.
-
-5. **Optional — RTK** — if you use RTK, their matrix includes Antigravity, e.g.:
-
-   ```bash
-   rtk init --agent antigravity
-   ```
-
-   (Exact flags follow the [rtk-ai/rtk](https://github.com/rtk-ai/rtk) README; update if the CLI changes.)
+1. Run the same **install** steps as in section 1 (from Cursor’s terminal or any shell).
+2. In Antigravity’s **integrated terminal**, `cd` to your **app** workspace and run `stack-check`.
+3. If the agent is blocked on shell commands, add **`stack-check`** (or the full path `~/.local/share/dev-checklist/stack-check`) to the **Terminal allow list** in Antigravity settings — see [Google’s Antigravity codelab (terminal policy)](https://codelabs.developers.google.com/getting-started-google-antigravity).
+4. **AGENTS.md** at the project root works across tools; it counts toward the “agent rules” check in `stack-check`.
+5. **Optional — RTK** for Antigravity (see [rtk](https://github.com/rtk-ai/rtk) README for current flags), e.g. `rtk init --agent antigravity`.
 
 ## Summary
 
-| Environment | How `stack-check` is meant to run |
-|---------------|----------------------------------|
-| **Claude Code** | Install [plugin + marketplace](claude-code.md) → `stack-check` on Bash `PATH` |
-| **Cursor** | Terminal → full path or `PATH`; optional RTK `--agent cursor` |
-| **Antigravity** | Terminal → full path or `PATH`; configure terminal allow list if needed; optional RTK `--agent antigravity` |
-| **Any other terminal** | [README.md](../README.md#without-the-plugin-plain-git) |
+| Step | Cursor | Antigravity |
+|------|--------|-------------|
+| Install from GitHub | `install.sh` (curl or git clone) | same |
+| Run checks | Terminal → `cd` app → `stack-check` | same |
+| No Claude plugin | use this doc | use this doc |
 
-`stack-check` only inspects the **current directory’s** files (and tools on `PATH` like `rtk`). It does not integrate with a vendor-specific “plugin” API on Cursor or Antigravity beyond that.
+**Claude Code** users: use the [Claude Code plugin](claude-code.md) instead if you want `stack-check` on the tool `PATH` without shell rc edits.
+
+`stack-check` only reads your **current directory** and `PATH` (e.g. `rtk`). It is not a Cursor or Antigravity “extension package” in the store sense—installation is the GitHub script above plus a working terminal.

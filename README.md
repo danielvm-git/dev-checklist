@@ -32,23 +32,28 @@ Full detail, scopes (`--scope project`), and RTK: **[docs/claude-code.md](docs/c
 
 **What gets installed:** the plugin adds [`bin/stack-check`](bin/stack-check) to the Bash `PATH` ([Claude Code `bin/` behavior](https://code.claude.com/docs/en/plugins-reference#file-locations-reference)). The real script and [`readiness-checklist.md`](readiness-checklist.md) live in the same repo.
 
-**Cursor and Google Antigravity** do not use that plugin format. Use the **integrated terminal** and a full path or `PATH` — see **[docs/cursor-and-antigravity.md](docs/cursor-and-antigravity.md)** (optional [RTK](https://github.com/rtk-ai/rtk) for `--agent cursor` / `--agent antigravity`).
+**Cursor, VS Code, Google Antigravity, etc.** — no Claude Code plugin. **Install from GitHub** (clone + `PATH`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/danielvm-git/dev-checklist/main/install.sh | bash
+```
+
+Details, review-before-run, and Antigravity terminal allow list: **[docs/cursor-and-antigravity.md](docs/cursor-and-antigravity.md)**. Optional: [RTK](https://github.com/rtk-ai/rtk) flags `--agent cursor` / `--agent antigravity`.
 
 ---
 
-## Without the plugin (plain Git)
+## Without `install.sh` (manual Git)
 
-If you are not using Claude Code plugins, clone and call the script by path from **your application repo**:
+From **your application repo** with a one-off clone path:
 
 ```bash
 git clone https://github.com/danielvm-git/dev-checklist.git
 cd /path/to/your/application
 ../dev-checklist/stack-check
-# or:   chmod +x path/to/dev-checklist/stack-check && path/to/dev-checklist/stack-check
 ```
 
-**Single file (no clone):**  
-`https://raw.githubusercontent.com/danielvm-git/dev-checklist/main/stack-check` — save, `chmod +x`; best results if you also keep `readiness-checklist.md` next to the script (full clone is easier).
+**Single file only:**  
+`https://raw.githubusercontent.com/danielvm-git/dev-checklist/main/stack-check` — save, `chmod +x`. Best with a full clone or copy [`readiness-checklist.md`](readiness-checklist.md) next to the script.
 
 ---
 
@@ -80,7 +85,8 @@ Copy [`.stack-check.yaml.example`](.stack-check.yaml.example) to **your app** as
 | [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json) | Marketplace catalog (install via `@dev-checklist-catalog`). |
 | [readiness-checklist.md](readiness-checklist.md) | Full five layers + spec-to-code gap (manual). |
 | [session-start.md](session-start.md) | Short daily session boot. |
-| [docs/cursor-and-antigravity.md](docs/cursor-and-antigravity.md) | Cursor + Google Antigravity (terminal / PATH / RTK). |
+| [docs/cursor-and-antigravity.md](docs/cursor-and-antigravity.md) | **Cursor + Antigravity: install from GitHub** via [`install.sh`](install.sh). |
+| [install.sh](install.sh) | Clone/update repo + add `~/.local/share/dev-checklist` to `PATH` (zsh/bash). |
 | [verify-readiness.sh](verify-readiness.sh) | Legacy; runs `stack-check`. |
 
 **Background:** [The Agentic Coding Stack (Dev Genius)](https://blog.devgenius.io/the-agentic-coding-stack-7-tools-5-layers-and-the-missing-link-nobody-has-built-yet-de264b260db3)
