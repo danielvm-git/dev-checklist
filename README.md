@@ -32,6 +32,8 @@ Full detail, scopes (`--scope project`), and RTK: **[docs/claude-code.md](docs/c
 
 **What gets installed:** the plugin adds [`bin/stack-check`](bin/stack-check) to the Bash `PATH` ([Claude Code `bin/` behavior](https://code.claude.com/docs/en/plugins-reference#file-locations-reference)). The real script and [`readiness-checklist.md`](readiness-checklist.md) live in the same repo.
 
+**Cursor and Google Antigravity** do not use that plugin format. Use the **integrated terminal** and a full path or `PATH` — see **[docs/cursor-and-antigravity.md](docs/cursor-and-antigravity.md)** (optional [RTK](https://github.com/rtk-ai/rtk) for `--agent cursor` / `--agent antigravity`).
+
 ---
 
 ## Without the plugin (plain Git)
@@ -78,6 +80,7 @@ Copy [`.stack-check.yaml.example`](.stack-check.yaml.example) to **your app** as
 | [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json) | Marketplace catalog (install via `@dev-checklist-catalog`). |
 | [readiness-checklist.md](readiness-checklist.md) | Full five layers + spec-to-code gap (manual). |
 | [session-start.md](session-start.md) | Short daily session boot. |
+| [docs/cursor-and-antigravity.md](docs/cursor-and-antigravity.md) | Cursor + Google Antigravity (terminal / PATH / RTK). |
 | [verify-readiness.sh](verify-readiness.sh) | Legacy; runs `stack-check`. |
 
 **Background:** [The Agentic Coding Stack (Dev Genius)](https://blog.devgenius.io/the-agentic-coding-stack-7-tools-5-layers-and-the-missing-link-nobody-has-built-yet-de264b260db3)
