@@ -1,0 +1,2 @@
+# dev-checklist
+This repository distributes post-CLI `stack-check` and readiness documentation; keep stack signals (specs/, rules) present so the template self-checks.

@@ -1,0 +1,17 @@
+# Optional: copy to .stack-check.yaml in a project and tune which layers are required
+# for the current phase. Simple key: value lines (comments and blank lines allowed).
+
+phase: "M72"
+
+# Required vs advisory (default: 1-3 and git required; rtk, context-mode, gsd optional)
+require_layer1: true
+require_layer2: true
+require_layer3: true
+require_layer4_rtk: false
+require_layer4_context_mode: false
+require_layer5_gitsurface: true
+require_layer5_gsd: false
+
+# When a phase must enforce RTK and GSD, set, for example:
+# require_layer4_rtk: true
+# require_layer5_gsd: true

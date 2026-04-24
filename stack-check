@@ -1,0 +1,279 @@
+#!/usr/bin/env bash
+# stack-check: post-CLI agentic stack verification (5 layers + optional signals).
+# See readiness-checklist.md for what cannot be automated. This script does not
+# run installers; on failure it prints Remediate lines (link + example command).
+#
+# Env:
+#   STACK_CHECK_STRICT=1           any WARN (including advisory) counts as failure (exit 1)
+#   STACK_CHECK_NO_REMEDIATION=1   omit Remediate blocks
+#   STACK_CHECK_DEGRADED_EXIT=1    exit 2 when any WARN and no hard FAIL (default exit 0 if only warnings)
+#
+# Optional: .stack-check.yaml (or .yml) in cwd — simple "key: value" lines (see .stack-check.yaml.example).
+
+set -u
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+
+# shellcheck disable=SC2034
+READINESS_DOC="${SCRIPT_DIR}/readiness-checklist.md"
+
+if [[ -t 1 ]]; then
+  GREEN=$'\033[0;32m' RED=$'\033[0;31m' YELLOW=$'\033[1;33m' CYAN=$'\033[0;36m' DIM=$'\033[0;90m' NC=$'\033[0m'
+else
+  GREEN='' RED='' YELLOW='' CYAN='' DIM='' NC=''
+fi
+
+REQ_L1=1
+REQ_L2=1
+REQ_L3=1
+REQ_L4_RTK=0
+REQ_L4_CONTEXT_MODE=0
+REQ_L5_GIT=1
+REQ_L5_GSD=0
+PHASE=""
+
+HARD_FAIL=0
+ANY_WARN=0
+FAIL_N=0
+WARN_N=0
+STRICT="${STACK_CHECK_STRICT:-0}"
+NO_REMED="${STACK_CHECK_NO_REMEDIATION:-0}"
+DEGR_EXIT="${STACK_CHECK_DEGRADED_EXIT:-0}"
+
+load_simple_yaml() {
+  local f=$1
+  [[ -f "$f" ]] || return 0
+  while IFS= read -r raw || [[ -n "$raw" ]]; do
+    local line="${raw%%#*}"
+    line="${line//[$'\r']/}"
+    [[ -z "${line// }" ]] && continue
+    if [[ "$line" =~ ^[[:space:]]*phase:[[:space:]]*(.+) ]]; then
+      local val="${BASH_REMATCH[1]}"
+      val="${val//\"/}"
+      val="${val#"${val%%[![:space:]]*}"}"
+      val="${val%"${val##*[![:space:]]}"}"
+      PHASE="$val"
+    elif [[ "$line" == *"require_layer1:"* ]]; then
+      [[ "$line" =~ :[[:space:]]*true|:[[:space:]]*1$ ]] && REQ_L1=1
+      [[ "$line" =~ :[[:space:]]*false|:[[:space:]]*0$ ]] && REQ_L1=0
+    elif [[ "$line" == *"require_layer2:"* ]]; then
+      [[ "$line" =~ :[[:space:]]*true|:[[:space:]]*1$ ]] && REQ_L2=1
+      [[ "$line" =~ :[[:space:]]*false|:[[:space:]]*0$ ]] && REQ_L2=0
+    elif [[ "$line" == *"require_layer3:"* ]]; then
+      [[ "$line" =~ :[[:space:]]*true|:[[:space:]]*1$ ]] && REQ_L3=1
+      [[ "$line" =~ :[[:space:]]*false|:[[:space:]]*0$ ]] && REQ_L3=0
+    elif [[ "$line" == *"require_layer4_rtk:"* ]]; then
+      [[ "$line" =~ :[[:space:]]*true|:[[:space:]]*1$ ]] && REQ_L4_RTK=1
+      [[ "$line" =~ :[[:space:]]*false|:[[:space:]]*0$ ]] && REQ_L4_RTK=0
+    elif [[ "$line" == *"require_layer4_context_mode:"* ]]; then
+      [[ "$line" =~ :[[:space:]]*true|:[[:space:]]*1$ ]] && REQ_L4_CONTEXT_MODE=1
+      [[ "$line" =~ :[[:space:]]*false|:[[:space:]]*0$ ]] && REQ_L4_CONTEXT_MODE=0
+    elif [[ "$line" == *"require_layer5_gitsurface:"* ]]; then
+      [[ "$line" =~ :[[:space:]]*true|:[[:space:]]*1$ ]] && REQ_L5_GIT=1
+      [[ "$line" =~ :[[:space:]]*false|:[[:space:]]*0$ ]] && REQ_L5_GIT=0
+    elif [[ "$line" == *"require_layer5_gsd:"* ]]; then
+      [[ "$line" =~ :[[:space:]]*true|:[[:space:]]*1$ ]] && REQ_L5_GSD=1
+      [[ "$line" =~ :[[:space:]]*false|:[[:space:]]*0$ ]] && REQ_L5_GSD=0
+    fi
+  done <"$f"
+}
+
+if [[ -f .stack-check.yaml ]]; then
+  load_simple_yaml .stack-check.yaml
+elif [[ -f .stack-check.yml ]]; then
+  load_simple_yaml .stack-check.yml
+fi
+
+remediate() {
+  local title=$1
+  local url=$2
+  local cmd=$3
+  local note=$4
+  [[ "$NO_REMED" == 1 ]] && return 0
+  echo -e "    ${CYAN}Remediate${NC} ${DIM}[$title]${NC}"
+  echo -e "      ${DIM}Doc:${NC}  $url"
+  [[ -n "$cmd" ]] && echo -e "      ${DIM}Run:${NC}  $cmd"
+  [[ -n "$note" ]] && echo -e "      ${DIM}Note:${NC} $note"
+}
+
+# out_ok name
+# out_fail name req(0|1) rem...
+# out_soft name  — always advisory warning path
+# out_warn name req(0|1) rem... — for checks that are WARN/ FAIL based on sub-req
+out_ok() { echo -e "  ${GREEN}[OK]${NC}  $*"; }
+out_manual() {
+  local name=$1; shift
+  echo -e "  ${YELLOW}[MANUAL]${NC} $name"
+  [[ "$NO_REMED" == 1 ]] && return 0
+  remediate "$@" 
+}
+out_line_fail_or_warn() {
+  local name=$1
+  local req=$2
+  local rem_title=$3
+  local rem_url=$4
+  local rem_cmd=$5
+  local rem_note=$6
+  if [[ $req -eq 0 ]]; then
+    ANY_WARN=1
+    ((WARN_N++)) || true
+    echo -e "  ${YELLOW}[WARN]${NC} $name (advisory)"
+    [[ $STRICT == 1 ]] && { HARD_FAIL=1; }
+    [[ "$NO_REMED" == 0 ]] && remediate "$rem_title" "$rem_url" "$rem_cmd" "$rem_note"
+  else
+    echo -e "  ${RED}[FAIL]${NC} $name"
+    HARD_FAIL=1
+    ((FAIL_N++)) || true
+    [[ "$NO_REMED" == 0 ]] && remediate "$rem_title" "$rem_url" "$rem_cmd" "$rem_note"
+  fi
+}
+out_line_warn() {
+  local label=$1
+  shift
+  ANY_WARN=1
+  ((WARN_N++)) || true
+  echo -e "  ${YELLOW}[WARN]${NC} $label"
+  [[ $STRICT == 1 ]] && HARD_FAIL=1
+  [[ "$NO_REMED" == 0 ]] && remediate "$1" "$2" "$3" "$4"
+}
+
+echo -e "${GREEN}stack-check${NC} (agentic stack) ${DIM}— cwd: ${PWD}${NC}"
+[[ -n "$PHASE" ]] && echo -e "${DIM}config phase: ${PHASE}${NC}"
+echo -e "${DIM}STRICT=$STRICT  NO_REMEDIATION=$NO_REMED  DEGRADED_EXIT=$DEGR_EXIT${NC}\n"
+
+echo -e "${YELLOW}Layer 1: Delivery Methodology (spec-kit / BMAD)${NC}"
+if [[ -d specs ]]; then
+  out_ok "specs/ directory"
+else
+  out_line_fail_or_warn "specs/ directory" "$REQ_L1" "spec-kit" \
+    "https://github.com/github/spec-kit" \
+    "Follow GitHub spec-kit README (init / specify flow for your language)." \
+    "BMAD alternative: npx bmad-method install (see BMAD-METHOD repo)."
+fi
+if [[ -d .bmad ]] || { compgen -G "bmad-*" &>/dev/null; } || { compgen -G "BMAD*" &>/dev/null; }; then
+  out_ok "optional BMAD-style path (.bmad/ or bmad-*)"
+fi
+
+echo -e "\n${YELLOW}Layer 2: Agent Discipline (rules / superpowers)${NC}"
+if [[ -f .cursorrules ]] || [[ -f instructions.md ]] || [[ -f .clinerules ]] || [[ -f AGENTS.md ]]; then
+  out_ok "agent rules (project: .cursorrules, instructions, .clinerules, or AGENTS.md)"
+else
+  out_line_fail_or_warn "agent rules in repo root" "$REQ_L2" "Cursor rules" \
+    "https://docs.cursor.com/context/rules-for-ai" \
+    "Add .cursorrules, instructions.md, .clinerules, or AGENTS.md at the repo root." \
+    "Portable convention: https://agents.md"
+fi
+
+echo -e "\n${YELLOW}Layer 3: Technical Context (docs proxy; Ctxo = manual)${NC}"
+if [[ -f README.md ]] || [[ -f PROJECT.md ]]; then
+  out_ok "README.md or PROJECT.md"
+else
+  out_line_fail_or_warn "README.md or PROJECT.md" "$REQ_L3" "project documentation" \
+    "https://github.com" \
+    "Add README.md (or PROJECT.md) with intent and how to work in the repo." \
+    "This does not replace Ctxo or semantic tools — confirm those in the checklist."
+fi
+if [[ "$NO_REMED" == 0 ]]; then
+  out_manual "Ctxo (or similar) — semantic / MCP setup" "Ctxo" \
+    "https://blog.devgenius.io/the-agentic-coding-stack-7-tools-5-layers-and-the-missing-link-nobody-has-built-yet-de264b260db3" \
+    "Install/configure your chosen semantic-codebase MCP in the IDE; index the repo as required." \
+    "Confirm in ${READINESS_DOC}: blast radius, logic slices, why-context."
+else
+  echo -e "  ${YELLOW}[MANUAL]${NC} Ctxo / semantic index — see ${READINESS_DOC}"
+fi
+
+echo -e "\n${YELLOW}Layer 4: Token optimization (RTK, context-mode)${NC}"
+if command -v rtk &>/dev/null; then
+  out_ok "rtk in PATH"
+else
+  if [[ $REQ_L4_RTK -eq 0 ]]; then
+    out_line_warn "rtk in PATH" "RTK (rtk-ai)" "https://github.com/rtk-ai/rtk" \
+      "brew install rtk  OR  curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh" \
+      "Then: rtk init -g  or  rtk init -g --agent cursor  (see repo README for Gemini/Codex)"
+  else
+    out_line_fail_or_warn "rtk in PATH" 1 "RTK (rtk-ai)" "https://github.com/rtk-ai/rtk" \
+      "brew install rtk  OR  curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh" \
+      "This phase requires rtk; see repo README for hook setup."
+  fi
+fi
+
+ctx_found=0
+if [[ -d .cursor ]]; then
+  if grep -r "context" .cursor 2>/dev/null | grep -qiE "mode|mcp" 2>/dev/null; then
+    ctx_found=1
+  fi
+fi
+if [[ -d mcps ]]; then
+  if grep -R "context" mcps 2>/dev/null | head -1 | grep -q .; then
+    ctx_found=1
+  fi
+fi
+if [[ -f mcp.json ]] && grep -q "context" mcp.json 2>/dev/null; then
+  ctx_found=1
+fi
+
+if [[ $ctx_found -eq 1 ]]; then
+  out_ok "MCP / context heuristics (optional): pattern seen under .cursor/ or mcp*"
+else
+  if [[ $REQ_L4_CONTEXT_MODE -eq 0 ]]; then
+    out_line_warn "context-mode in MCP (heuristic, optional)" "context-mode" \
+      "https://blog.devgenius.io/the-agentic-coding-stack-7-tools-5-layers-and-the-missing-link-nobody-has-built-yet-de264b260db3" \
+      "Add a context / sandbox MCP server in .cursor (or your IDE) and ensure the agent uses it for long research." \
+      "Detection is shallow; verify in the IDE (Layer 4 in stack article)."
+  else
+    out_line_fail_or_warn "context-mode in MCP" 1 "context-mode" \
+      "https://blog.devgenius.io/the-agentic-coding-stack-7-tools-5-layers-and-the-missing-link-nobody-has-built-yet-de264b260db3" \
+      "Configure context-mode in MCP per your product docs." \
+      "This phase has require_layer4_context_mode: true in .stack-check.yaml"
+  fi
+fi
+
+echo -e "\n${YELLOW}Layer 5: Product surface (git / GSD)${NC}"
+if [[ -d .git ]]; then
+  out_ok "git repository (proxy for an integrated VCS / surface)"
+else
+  out_line_fail_or_warn ".git (version control)" "$REQ_L5_GIT" "git" \
+    "https://git-scm.com/doc" \
+    "git init" \
+    "gsd-2, worktrees, and recovery are still manual; see ${READINESS_DOC}"
+fi
+
+gsd_found=0
+if command -v gsd &>/dev/null; then
+  gsd_found=1
+fi
+if [[ -d .gsd ]] || [[ -d .planning ]]; then
+  gsd_found=1
+fi
+if [[ $gsd_found -eq 1 ]]; then
+  out_ok "GSD / planning signal (.gsd, .planning, or gsd on PATH)"
+else
+  if [[ $REQ_L5_GSD -eq 0 ]]; then
+    out_line_warn "GSD or .planning/ (optional)" "GSD" \
+      "https://github.com" \
+      "Use your team’s GSD or milestone workflow; gsd-2 is the “product surface” in the stack article." \
+      "Optional: add .planning/ (e.g. GSD v1) or install a gsd CLI if your org uses it."
+  else
+    out_line_fail_or_warn "GSD or .planning" 1 "GSD" \
+      "https://github.com" \
+      "Add .gsd, .planning, or gsd on PATH per your org." \
+      "require_layer5_gsd: true in your stack-check config"
+  fi
+fi
+
+echo -e "\n${YELLOW}---${NC}"
+if [[ $HARD_FAIL -gt 0 ]]; then
+  VERDICT="not_ready"
+  EXIT=1
+elif [[ $ANY_WARN -gt 0 ]]; then
+  VERDICT="degraded"
+  EXIT=0
+  [[ $DEGR_EXIT == 1 ]] && EXIT=2
+else
+  VERDICT="ready"
+  EXIT=0
+fi
+echo -e "VERDICT: ${CYAN}$VERDICT${NC} (required-check failures: $FAIL_N, advisory warnings: $WARN_N)"
+echo -e "Full layer + spec-to-code gap: ${DIM}${READINESS_DOC/#$HOME/~}${NC}"
+
+exit "$EXIT"
