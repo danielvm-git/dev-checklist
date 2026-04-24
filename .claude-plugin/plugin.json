@@ -1,0 +1,8 @@
+{
+  "name": "dev-checklist",
+  "description": "Post-CLI stack-check for the agentic coding stack (5 layers). Adds stack-check to the Bash tool PATH when enabled.",
+  "repository": "https://github.com/danielvm-git/dev-checklist",
+  "author": {
+    "name": "danielvm-git"
+  }
+}

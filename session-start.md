@@ -11,6 +11,6 @@ Order: **context → environment → go.**
 - [ ] **Quick health (pick one)**: Run the project’s fast smoke check—e.g. unit tests, lint, or build—*only* what the team uses as a “sanity” signal when starting.
 - [ ] **Editor / agent context**: Open the right files, spec, or planning doc for today’s work; note anything the agent should know in-session.
 
-- [ ] **Stack confidence (optional)**: run [`stack-check`](stack-check) in the project root if you need a quick “is the agentic stack in place for this repo/phase?” answer (see [`.stack-check.yaml.example`](.stack-check.yaml.example) to require RTK, GSD, etc., for a phase).
+- [ ] **Stack confidence (optional)**: run `stack-check` in the project root (Claude Code: after [installing the plugin](docs/claude-code.md)) if you need a quick “is the agentic stack in place for this repo/phase?” answer (see [`.stack-check.yaml.example`](.stack-check.yaml.example) to require RTK, GSD, etc., for a phase).
 
 When something feels wrong with the *stack* (methodology, discipline, context tooling, token noise, or autonomous surface), use [readiness-checklist.md](readiness-checklist.md) and [`stack-check`](stack-check) instead of expanding this list.

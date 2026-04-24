@@ -1,99 +1,79 @@
-# Using dev-checklist with Claude Code (install from GitHub)
+# Install and run under Claude Code
+
+This repo is a **Claude Code plugin**: files in `bin/` are added to the **Bash tool `PATH`** while the plugin is enabled, so you can type `stack-check` in the integrated terminal (same behavior as the [plugin reference: `bin/`](https://code.claude.com/docs/en/plugins-reference#file-locations-reference)).
 
 **Repository:** [https://github.com/danielvm-git/dev-checklist](https://github.com/danielvm-git/dev-checklist)
 
-Run **`stack-check`** from your **application repository** (the project you are building), not only from a checkout of this template. In Claude Code, use the **integrated terminal** the same way you would in a local shell.
+## 1. Add the marketplace (once)
 
-## Prerequisites
-
-- **Git** and **bash** (macOS and Linux are supported).
-- A terminal, including the one inside **Claude Code**.
-
-## Get this repo from GitHub
-
-### Option A: Clone (recommended)
-
-You get the full `stack-check` script plus [readiness-checklist.md](../readiness-checklist.md) beside it (the script points to that file for the “missing link” and manual layer notes).
+In **Claude Code** (or your normal terminal with `claude` on `PATH`):
 
 ```bash
-git clone https://github.com/danielvm-git/dev-checklist.git
-cd dev-checklist
-chmod +x stack-check
-./stack-check
+/plugin marketplace add danielvm-git/dev-checklist
 ```
 
-To run checks against **another** project, stay in the app repo and call the script by path:
+Or CLI equivalent:
 
 ```bash
-cd /path/to/your/app
-/path/to/your/clone/dev-checklist/stack-check
+claude plugin marketplace add danielvm-git/dev-checklist
 ```
 
-### Option B: Download only the script (raw)
+If the command is not found, update [Claude Code](https://code.claude.com/docs/en/discover-plugins#plugin-command-not-recognized) and try again.
 
-For a **single file** from the `main` branch:
+## 2. Install the plugin (user or project scope)
+
+**In the Claude Code slash palette:**
 
 ```text
-https://raw.githubusercontent.com/danielvm-git/dev-checklist/main/stack-check
+/plugin install dev-checklist@dev-checklist-catalog
 ```
 
-Save it, then:
+**Or CLI:**
 
 ```bash
-chmod +x stack-check
-./stack-check
+claude plugin install dev-checklist@dev-checklist-catalog
 ```
 
-**Note:** Remediation output and the manual checklist are best when the full repo (or at least `readiness-checklist.md` in the same directory as `stack-check`) is present. The script resolves `readiness-checklist.md` from its own directory. If you only download the raw script, copy `readiness-checklist.md` next to it or use a full clone.
+- Use **`--scope project`** to pin it in the current app repo (`.claude/settings.json`, shared with the team) if you want everyone on that repo to have the check.
+- Default **user** scope: available in all your projects.
 
-## Use inside Claude Code
+## 3. Reload plugins
 
-1. Open **Claude Code** for your app.
-2. Open the **Terminal** in Claude Code.
-3. `cd` to your **app repo root** (the project whose stack you are verifying).
-4. Run `stack-check` (full path to your clone) or add it to your `PATH` once (see below).
+```text
+/reload-plugins
+```
 
-This answers: “Is the agentic stack in place for **this** repo or phase?” — not the dev-checklist template itself.
+## 4. Run `stack-check` in your *application* project
 
-## Optional: RTK (token optimization, Layer 4)
-
-For compressed shell output in agent sessions, the stack article recommends [RTK](https://github.com/rtk-ai/rtk). For Claude Code specifically:
+1. `cd` to the **root of the project you are building** (not the `dev-checklist` clone).
+2. In the **Bash** tool / terminal, run:
 
 ```bash
-# after installing rtk (see rtk README: brew, curl install script, etc.)
+stack-check
+```
+
+`stack-check` is on `PATH` only while the **dev-checklist** plugin is enabled. It validates that repo’s tree (`specs/`, rules, `README`, git, etc.) and prints a **VERDICT** and **Remediate** lines.
+
+3. Optional: copy [`.stack-check.yaml.example`](../.stack-check.yaml.example) to that app as `.stack-check.yaml` to require RTK, GSD, etc. for a stricter **phase**.
+
+## If you can’t use marketplaces (offline / policy)
+
+- **Per session:** `claude --plugin-dir /path/to/your/clone` when starting Claude Code, then `stack-check` in Bash after `cd` to your app.  
+- **Plain shell:** `git clone` this repo and run `/path/to/clone/stack-check` or add `clone/bin` to `PATH` (see [README.md](../README.md#without-the-plugin-plain-git)).
+
+## Optional: RTK (Layer 4) for Claude Code
+
+[RTK](https://github.com/rtk-ai/rtk) hooks shell output; with Claude Code:
+
+```bash
 rtk init -g
 ```
 
-Then restart Claude Code. This is **optional**; `stack-check` will **WARN** if `rtk` is not on `PATH` unless you [require it](../.stack-check.yaml.example) for a stricter phase.
+Then restart Claude Code. `stack-check` will **WARN** if `rtk` is missing unless you require it in `.stack-check.yaml`.
 
-## Optional: put `stack-check` on your PATH
+## References
 
-```bash
-# zsh: add the clone directory to PATH (use your real path)
-echo 'export PATH="$HOME/Projects/dev-checklist:$PATH"' >> ~/.zshrc
-# or symlink into ~/.local/bin
-ln -s "$HOME/Projects/dev-checklist/stack-check" ~/.local/bin/stack-check
-```
-
-Use the real path to your clone (for example: `$HOME/Projects/dev-checklist` after cloning this repo).
-
-## Phase-specific requirements
-
-Copy [`.stack-check.yaml.example`](../.stack-check.yaml.example) to **your app repo** as `.stack-check.yaml` and toggle `require_layer4_rtk`, `require_layer5_gsd`, etc., when a milestone demands those layers.
-
-## More documentation
-
-- [README.md](../README.md) — quick start, environment variables, exit codes, troubleshooting.
-- [readiness-checklist.md](../readiness-checklist.md) — full five layers and spec-to-code traceability (manual).
-- [session-start.md](../session-start.md) — short daily session boot; optional `stack-check` when you need stack confidence.
-
-## Flow
-
-```mermaid
-flowchart LR
-  get[Get repo from GitHub]
-  place[Point PATH or use full path]
-  app[cd app repo in Claude Code]
-  run[Run stack-check]
-  get --> place --> app --> run
-```
+- [Plugins reference (bin/ on PATH)](https://code.claude.com/docs/en/plugins-reference#file-locations-reference)
+- [Discover and install plugins](https://code.claude.com/docs/en/discover-plugins)
+- [readiness-checklist.md](../readiness-checklist.md) — manual layers and spec-to-code “missing link”
+- [README.md](../README.md) — environment variables, exit codes, non–Claude Code use

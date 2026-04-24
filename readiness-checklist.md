@@ -13,7 +13,7 @@ This checklist ensures your project is correctly configured for the **Agentic Co
 
 ### Automated check
 
-Run [`stack-check`](stack-check) from the **repo you are working in** (after opening your CLI). It reports per-layer **OK / WARN / FAIL / MANUAL**, a **VERDICT** line, and **Remediate** links plus example commands for failed checks. It does not run installers for you. Optional [`.stack-check.yaml.example`](.stack-check.yaml.example) lets you set **phase**-specific `require_layer*` flags.
+Run [`stack-check`](stack-check) from the **repo you are working in** (after opening your CLI). In **Claude Code**, install the **dev-checklist** plugin so `stack-check` is on the Bash tool `PATH` — see [docs/claude-code.md](docs/claude-code.md). It reports per-layer **OK / WARN / FAIL / MANUAL**, a **VERDICT** line, and **Remediate** links plus example commands for failed checks. It does not run installers for you. Optional [`.stack-check.yaml.example`](.stack-check.yaml.example) lets you set **phase**-specific `require_layer*` flags.
 
 - [`stack-check`](stack-check) — current verifier (verdict and exit codes).
 - [`verify-readiness.sh`](verify-readiness.sh) — legacy wrapper; calls `stack-check`.

@@ -1,0 +1,19 @@
+{
+  "name": "dev-checklist-catalog",
+  "owner": {
+    "name": "danielvm-git"
+  },
+  "metadata": {
+    "description": "Stack verification for agentic development (Claude Code Bash tool: stack-check on PATH)"
+  },
+  "plugins": [
+    {
+      "name": "dev-checklist",
+      "source": {
+        "source": "github",
+        "repo": "danielvm-git/dev-checklist"
+      },
+      "description": "Run stack-check from any project to verify the agentic stack; optional .stack-check.yaml for phase rules."
+    }
+  ]
+}

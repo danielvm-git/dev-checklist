@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Wrapper for Claude Code: plugin bin/ is on the Bash tool PATH. Resolve repo root
+# (dev-checklist installation) so the real script and readiness-checklist.md stay in sync.
+set -euo pipefail
+_R="${CLAUDE_PLUGIN_ROOT:-}"
+if [[ -z "$_R" ]]; then
+  _R="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+fi
+exec "$_R/stack-check" "$@"
