@@ -1,5 +1,7 @@
 # dev-checklist
 
+[![GitHub](https://img.shields.io/badge/github-danielvm--git%2Fdev--checklist-blue?logo=github)](https://github.com/danielvm-git/dev-checklist)
+
 Post-CLI checks for the **agentic coding stack** (five layers, spec-to-code gap). Run from your **application repo root** after opening Cursor, Claude Code, Gemini CLI, or any terminal.
 
 ## Claude Code (install from GitHub)

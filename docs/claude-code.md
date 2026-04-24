@@ -1,5 +1,7 @@
 # Using dev-checklist with Claude Code (install from GitHub)
 
+**Repository:** [https://github.com/danielvm-git/dev-checklist](https://github.com/danielvm-git/dev-checklist)
+
 Run **`stack-check`** from your **application repository** (the project you are building), not only from a checkout of this template. In Claude Code, use the **integrated terminal** the same way you would in a local shell.
 
 ## Prerequisites
@@ -9,15 +11,13 @@ Run **`stack-check`** from your **application repository** (the project you are 
 
 ## Get this repo from GitHub
 
-Replace `<OWNER>` and `<REPO>` with the real GitHub path after you have published the repository (for example: `octocat/dev-checklist`).
-
 ### Option A: Clone (recommended)
 
 You get the full `stack-check` script plus [readiness-checklist.md](../readiness-checklist.md) beside it (the script points to that file for the “missing link” and manual layer notes).
 
 ```bash
-git clone https://github.com/<OWNER>/<REPO>.git
-cd <REPO>
+git clone https://github.com/danielvm-git/dev-checklist.git
+cd dev-checklist
 chmod +x stack-check
 ./stack-check
 ```
@@ -26,7 +26,7 @@ To run checks against **another** project, stay in the app repo and call the scr
 
 ```bash
 cd /path/to/your/app
-/path/where/you/cloned/<REPO>/stack-check
+/path/to/your/clone/dev-checklist/stack-check
 ```
 
 ### Option B: Download only the script (raw)
@@ -34,7 +34,7 @@ cd /path/to/your/app
 For a **single file** from the `main` branch:
 
 ```text
-https://raw.githubusercontent.com/<OWNER>/<REPO>/main/stack-check
+https://raw.githubusercontent.com/danielvm-git/dev-checklist/main/stack-check
 ```
 
 Save it, then:
@@ -69,13 +69,13 @@ Then restart Claude Code. This is **optional**; `stack-check` will **WARN** if `
 ## Optional: put `stack-check` on your PATH
 
 ```bash
-# zsh
-echo 'export PATH="/path/to/cloned/<REPO>:$PATH"' >> ~/.zshrc
-# or a dedicated bin directory and symlink
-ln -s /path/to/cloned/<REPO>/stack-check ~/.local/bin/stack-check
+# zsh: add the clone directory to PATH (use your real path)
+echo 'export PATH="$HOME/Projects/dev-checklist:$PATH"' >> ~/.zshrc
+# or symlink into ~/.local/bin
+ln -s "$HOME/Projects/dev-checklist/stack-check" ~/.local/bin/stack-check
 ```
 
-Use the real path to your clone instead of `/path/to/cloned/<REPO>`.
+Use the real path to your clone (for example: `$HOME/Projects/dev-checklist` after cloning this repo).
 
 ## Phase-specific requirements
 
