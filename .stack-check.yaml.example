@@ -9,6 +9,8 @@ require_layer2: true
 # Superpowers (obra) repo-local signal: optional WARN if absent unless set true (then FAIL)
 require_layer2_superpowers: false
 require_layer3: true
+# Ctxo runtime evidence (MCP config + index + status): advisory by default, FAIL when true
+require_layer3_ctxo: false
 require_layer4_rtk: false
 require_layer4_context_mode: false
 require_layer5_gitsurface: true
@@ -18,3 +20,4 @@ require_layer5_gsd: false
 # require_layer4_rtk: true
 # require_layer5_gsd: true
 # require_layer2_superpowers: true
+# require_layer3_ctxo: true

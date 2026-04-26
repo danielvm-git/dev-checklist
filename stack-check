@@ -28,6 +28,7 @@ fi
 REQ_L1=1
 REQ_L2=1
 REQ_L3=1
+REQ_L3_CTXO=0
 REQ_L4_RTK=0
 REQ_L4_CONTEXT_MODE=0
 REQ_L5_GIT=1
@@ -83,6 +84,9 @@ load_simple_yaml() {
     elif [[ "$line" == *"require_layer3:"* ]]; then
       [[ "$line" =~ :[[:space:]]*true|:[[:space:]]*1$ ]] && REQ_L3=1
       [[ "$line" =~ :[[:space:]]*false|:[[:space:]]*0$ ]] && REQ_L3=0
+    elif [[ "$line" == *"require_layer3_ctxo:"* ]]; then
+      [[ "$line" =~ :[[:space:]]*true|:[[:space:]]*1$ ]] && REQ_L3_CTXO=1
+      [[ "$line" =~ :[[:space:]]*false|:[[:space:]]*0$ ]] && REQ_L3_CTXO=0
     elif [[ "$line" == *"require_layer4_rtk:"* ]]; then
       [[ "$line" =~ :[[:space:]]*true|:[[:space:]]*1$ ]] && REQ_L4_RTK=1
       [[ "$line" =~ :[[:space:]]*false|:[[:space:]]*0$ ]] && REQ_L4_RTK=0
@@ -108,6 +112,7 @@ fi
 # Agentic Coding Stack (layers / tools): human-readable reference for remediation.
 STACK_GUIDE_URL="https://blog.devgenius.io/the-agentic-coding-stack-7-tools-5-layers-and-the-missing-link-nobody-has-built-yet-de264b260db3"
 SUPERPOWERS_INSTALL_URL="https://github.com/obra/superpowers"
+CTXO_DOC_URL="https://alperhankendi.github.io/Ctxo/docs/introduction/mcp-client-setup"
 
 # Repo-local Superpowers / obra signal (no network). See readiness-checklist Layer 2.
 layer2_superpowers_signal() {
@@ -131,6 +136,56 @@ layer2_superpowers_signal() {
     fi
   done
   return 1
+}
+
+# Ctxo health (Layer 3) based on config/index/runtime shell-detectable evidence.
+layer3_ctxo_health() {
+  CTXO_CFG_FOUND=0
+  CTXO_IDX_FOUND=0
+  CTXO_RUNTIME_FOUND=0
+  CTXO_STATE="warn"
+  CTXO_WHY=""
+
+  local f
+  for f in .mcp.json .cursor/mcp.json .gemini/settings.json .gemini/antigravity/mcp_config.json; do
+    [[ -f "$f" ]] || continue
+    if grep -qi '"ctxo"' "$f" 2>/dev/null; then
+      CTXO_CFG_FOUND=1
+      break
+    fi
+  done
+
+  if [[ -d .ctxo ]] || [[ -f .ctxo/index-manifest.json ]] || [[ -f .ctxo/manifest.json ]]; then
+    CTXO_IDX_FOUND=1
+  fi
+
+  if command -v ctxo &>/dev/null; then
+    if ctxo status >/dev/null 2>&1; then
+      CTXO_RUNTIME_FOUND=1
+    fi
+  elif command -v npx &>/dev/null; then
+    if npx @ctxo/cli status >/dev/null 2>&1; then
+      CTXO_RUNTIME_FOUND=1
+    fi
+  fi
+
+  if [[ $CTXO_CFG_FOUND -eq 1 && $CTXO_IDX_FOUND -eq 1 && $CTXO_RUNTIME_FOUND -eq 1 ]]; then
+    CTXO_STATE="ok"
+    return 0
+  fi
+
+  if [[ $CTXO_CFG_FOUND -eq 0 && $CTXO_RUNTIME_FOUND -eq 0 ]]; then
+    CTXO_STATE="fail"
+    CTXO_WHY="No Ctxo MCP config entry found in project-level files and no successful Ctxo runtime status check."
+    return 0
+  fi
+
+  local missing=()
+  [[ $CTXO_CFG_FOUND -eq 0 ]] && missing+=("config")
+  [[ $CTXO_IDX_FOUND -eq 0 ]] && missing+=("index")
+  [[ $CTXO_RUNTIME_FOUND -eq 0 ]] && missing+=("runtime status")
+  CTXO_STATE="warn"
+  CTXO_WHY="Ctxo evidence is partial; missing: ${missing[*]}."
 }
 
 # remediate title problem url cmd note [url2]  —  problem may be empty; optional 6th url2 prints as second Doc line
@@ -276,7 +331,7 @@ else
   fi
 fi
 
-echo -e "\n${YELLOW}Layer 3: Technical Context (docs proxy; Ctxo = manual)${NC}"
+echo -e "\n${YELLOW}Layer 3: Technical Context (docs + graded Ctxo evidence)${NC}"
 if [[ -f README.md ]] || [[ -f PROJECT.md ]]; then
   out_ok "README.md or PROJECT.md"
 else
@@ -287,14 +342,29 @@ else
     "Add README.md (or PROJECT.md) with intent and how to work in the repo." \
     "This does not replace Ctxo or semantic tools — confirm those in the checklist."
 fi
+
+layer3_ctxo_health
+if [[ "$CTXO_STATE" == "ok" ]]; then
+  out_ok "Ctxo runtime health: configured + indexed + status healthy"
+else
+  local_ctxo_req=0
+  [[ $REQ_L3_CTXO -eq 1 ]] && local_ctxo_req=1
+  [[ "$CTXO_STATE" == "fail" ]] && local_ctxo_req=1
+  out_line_fail_or_warn "L3:ctxo" \
+    "$CTXO_WHY" \
+    "Ctxo runtime health" "$local_ctxo_req" "Ctxo runtime health" \
+    "$CTXO_DOC_URL" \
+    "Configure MCP (ctxo), run ctxo index, then verify ctxo status in the repo root." \
+    "Set require_layer3_ctxo: true in .stack-check.yaml to enforce this in strict phases."
+fi
 if [[ "$NO_REMED" == 0 ]]; then
-  out_manual "Ctxo (or similar) — semantic / MCP setup" "Ctxo" \
-    "The script cannot see your IDE’s semantic index; you must confirm Ctxo (or an equivalent) yourself." \
-    "https://blog.devgenius.io/the-agentic-coding-stack-7-tools-5-layers-and-the-missing-link-nobody-has-built-yet-de264b260db3" \
-    "Install/configure your chosen semantic-codebase MCP in the IDE; index the repo as required." \
+  out_manual "Ctxo semantic quality checks (secondary)" "Ctxo semantic checks" \
+    "Shell checks cannot prove semantic answer quality; confirm core Ctxo queries in your IDE/client." \
+    "$CTXO_DOC_URL" \
+    "Call one Ctxo tool (for example blast radius) in your client and verify meaningful output." \
     "Confirm in ${READINESS_DOC}: blast radius, logic slices, why-context."
 else
-  echo -e "  ${YELLOW}[MANUAL]${NC} Ctxo / semantic index — see ${READINESS_DOC}"
+  echo -e "  ${YELLOW}[MANUAL]${NC} Ctxo semantic quality checks — see ${READINESS_DOC}"
 fi
 
 echo -e "\n${YELLOW}Layer 4: Token optimization (RTK, context-mode)${NC}"

@@ -17,8 +17,36 @@ bash install-stack.sh --mode greenfield --target /path/to/app --env all --strict
 For an existing project:
 
 ```bash
-bash install-stack.sh --mode existing --target /path/to/existing/repo --env all --strict --yes
+bash install-stack.sh --mode existing --target ./ --env all --strict --yes
 ```
+
+### Environment-targeted modes (project-level MCP configs)
+
+Core MCP guarantee in this workflow is **Ctxo + context-mode only**.
+Optional MCPs like Nuxt/DeepL are out of scope.
+
+```bash
+# 1) all targets in project-level files
+bash install-stack.sh --mode existing --target ./ --env all --strict --yes
+
+# 2) claude only
+bash install-stack.sh --mode existing --target ./ --env claude --strict --yes
+
+# 3) gemini + antigravity only
+bash install-stack.sh --mode existing --target ./ --env gemini --strict --yes
+
+# 4) cursor desktop + cursor cli only
+bash install-stack.sh --mode existing --target ./ --env cursor --strict --yes
+```
+
+Mode-to-file matrix:
+
+| `--env` | Project file(s) written/merged |
+|---|---|
+| `claude` | `.mcp.json` |
+| `cursor` | `.cursor/mcp.json` |
+| `gemini` | `.gemini/settings.json`, `.gemini/antigravity/mcp_config.json` |
+| `all` | all files above |
 
 ### Manual 9-step sequence
 
@@ -88,18 +116,26 @@ curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/instal
 - Commands:
 
 ```bash
-npx -y @ctxo/init
+npm i -g @ctxo/cli
+npx @ctxo/cli
 ```
 
-- Checker note: Layer 3 Ctxo is marked `MANUAL` in current `stack-check`.
-- Verify runtime: use your IDE MCP tools and Ctxo docs flow.
+- Rename note: `ctxo-mcp` was renamed to `@ctxo/cli`; do not use `@ctxo/init`.
+- Checker note: Layer 3 Ctxo is now graded by shell evidence:
+  - `OK`: config + index + runtime status
+  - `WARN`: partial evidence
+  - `FAIL`: only when `require_layer3_ctxo: true` and evidence is insufficient
+- Verify runtime:
+  - confirm MCP server `ctxo` is connected
+  - confirm Ctxo tools are listed in your client
+  - run status/resource check in your MCP client if available
 - Optional local signal:
 
 ```bash
 cat > .mcp.json <<'EOF'
 {
   "mcpServers": {
-    "ctxo": { "command": "npx", "args": ["-y", "@ctxo/cli"] }
+    "ctxo": { "command": "npx", "args": ["@ctxo/cli", "mcp"] }
   }
 }
 EOF
@@ -175,6 +211,13 @@ STACK_CHECK_STRICT=1 stack-check
 - Guaranteed checks are filesystem/PATH signals only.
 - Plugin runtime behavior (Ctxo deep indexing, IDE session hooks) still needs runtime verification in your tool.
 - This boundary is intentional so results are deterministic and scriptable.
+
+### Turning Layer 3 Ctxo WARN into OK
+
+1. Ensure project-level MCP config contains `ctxo` (for your selected env target files).
+2. Run `ctxo index` in the repo root so `.ctxo/` artifacts are present.
+3. Confirm `ctxo status` succeeds in the same repo.
+4. Optional strict enforcement: set `require_layer3_ctxo: true` in `.stack-check.yaml`.
 
 ## Fast references
 

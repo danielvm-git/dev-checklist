@@ -6,3 +6,10 @@
 .env.*
 .claude
 .agents
+
+# Ctxo local cache (auto-rebuilt, never committed)
+.ctxo/.cache/
+.cursor
+.gemini
+.github
+.vscode

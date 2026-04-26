@@ -10,6 +10,24 @@ bash install-stack.sh --mode greenfield --target /path/to/app --env all --strict
 
 Run from this repository root, then execute step 9 in your target app repo.
 
+Project-level MCP guarantee modes:
+
+```bash
+# all
+bash install-stack.sh --mode existing --target ./ --env all --strict --yes
+
+# claude only
+bash install-stack.sh --mode existing --target ./ --env claude --strict --yes
+
+# gemini + antigravity only
+bash install-stack.sh --mode existing --target ./ --env gemini --strict --yes
+
+# cursor only
+bash install-stack.sh --mode existing --target ./ --env cursor --strict --yes
+```
+
+These modes guarantee core MCP entries (`ctxo`, `context-mode`) in project-level config files only.
+
 ## Option 1 — Any terminal (recommended for everyone)
 
 Use the same [install.sh](https://github.com/danielvm-git/dev-checklist/blob/main/install.sh) everywhere:

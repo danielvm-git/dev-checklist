@@ -13,12 +13,12 @@ This checklist ensures your project is correctly configured for the **Agentic Co
 
 ### Automated check
 
-Run [`stack-check`](stack-check) from the **repo you are working in** (after opening your CLI). In **Claude Code**, install the **dev-checklist** plugin so `stack-check` is on the Bash tool `PATH` — see [docs/claude-code.md](docs/claude-code.md). It reports per-layer **OK / WARN / FAIL / MANUAL**, a **VERDICT** line, and **Remediate** links plus example commands for failed checks. It does not run installers for you. Optional [`.stack-check.yaml.example`](.stack-check.yaml.example) lets you set **phase**-specific `require_layer*` flags (including `require_layer2_superpowers` to hard-require a **repo-local** Superpowers signal).
+Run [`stack-check`](stack-check) from the **repo you are working in** (after opening your CLI). In **Claude Code**, install the **dev-checklist** plugin so `stack-check` is on the Bash tool `PATH` — see [docs/claude-code.md](docs/claude-code.md). It reports per-layer **OK / WARN / FAIL / MANUAL**, a **VERDICT** line, and **Remediate** links plus example commands for failed checks. It does not run installers for you. Optional [`.stack-check.yaml.example`](.stack-check.yaml.example) lets you set **phase**-specific `require_layer*` flags (including `require_layer2_superpowers` for repo-local Superpowers and `require_layer3_ctxo` for Ctxo runtime evidence).
 
 - [`stack-check`](stack-check) — current verifier (verdict and exit codes).
 - [`verify-readiness.sh`](verify-readiness.sh) — legacy wrapper; calls `stack-check`.
 
-For limits (e.g. Layer 3 = docs proxy, not Ctxo proof), see the header comment in `stack-check`. **Layer 2:** `stack-check` verifies root **rules files** and an **optional** repo-local **Superpowers** signal (vendored skills or a root doc link to [obra/superpowers](https://github.com/obra/superpowers)); it cannot see IDE-only plugin installs. **TDD, verification gates, and atomic commits** below are still **manual** checklist items aligned with the [stack article](https://blog.devgenius.io/the-agentic-coding-stack-7-tools-5-layers-and-the-missing-link-nobody-has-built-yet-de264b260db3), not fully automated here.
+For limits, see the header comment in `stack-check`. **Layer 2:** `stack-check` verifies root **rules files** and an **optional** repo-local **Superpowers** signal (vendored skills or a root doc link to [obra/superpowers](https://github.com/obra/superpowers)); it cannot see IDE-only plugin installs. **Layer 3 Ctxo:** `stack-check` now grades shell-detectable evidence (MCP config + index + runtime status), but semantic answer quality is still a manual check in your IDE client. **TDD, verification gates, and atomic commits** below are still **manual** checklist items aligned with the [stack article](https://blog.devgenius.io/the-agentic-coding-stack-7-tools-5-layers-and-the-missing-link-nobody-has-built-yet-de264b260db3), not fully automated here.
 
 ---
 

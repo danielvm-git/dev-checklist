@@ -10,7 +10,8 @@ YES=0
 DRY_RUN=0
 STRICT=0
 
-STEP_FAILS=()
+declare -a STEP_FAILS=()
+declare -a TARGET_MCP_FILES=()
 
 usage() {
   cat <<'EOF'
@@ -69,7 +70,7 @@ append_if_missing() {
   local p="$1"
   local needle="$2"
   local line="$3"
-  if [[ -f "$p" ]] && rg -n "$needle" "$p" >/dev/null 2>&1; then
+  if [[ -f "$p" ]] && grep -q "$needle" "$p" >/dev/null 2>&1; then
     return 0
   fi
   if [[ "$DRY_RUN" -eq 1 ]]; then
@@ -77,6 +78,116 @@ append_if_missing() {
     return 0
   fi
   printf '%s\n' "$line" >>"$p"
+}
+
+upsert_mcp_bundle() {
+  local file_path="$1"
+  local root_key="$2"
+  ensure_parent_exists "$file_path"
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    say "[dry-run] upsert MCP bundle in $file_path ($root_key)"
+    return 0
+  fi
+  python3 - "$file_path" "$root_key" <<'PY'
+import json
+import os
+import shutil
+import sys
+
+path = sys.argv[1]
+root_key = sys.argv[2]
+
+bundle = {
+    "ctxo": {
+        "command": "npx",
+        "args": ["@ctxo/cli", "mcp"],
+    },
+    "context-mode": {
+        "command": "context-mode",
+    },
+}
+
+data = {}
+if os.path.exists(path):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            existing = f.read().strip()
+            if existing:
+                data = json.loads(existing)
+                if not isinstance(data, dict):
+                    data = {}
+    except Exception:
+        shutil.copy2(path, path + ".bak")
+        data = {}
+
+servers = data.get(root_key)
+if not isinstance(servers, dict):
+    servers = {}
+data[root_key] = servers
+
+for k, v in bundle.items():
+    servers[k] = v
+
+with open(path, "w", encoding="utf-8") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+PY
+}
+
+is_selected_env() {
+  local e="$1"
+  [[ "$ENV_TARGET" == "all" || "$ENV_TARGET" == "$e" ]]
+}
+
+register_target_mcp_file() {
+  local p="$1"
+  local exists=0
+  for x in "${TARGET_MCP_FILES[@]-}"; do
+    [[ "$x" == "$p" ]] && exists=1
+  done
+  [[ "$exists" -eq 0 ]] && TARGET_MCP_FILES+=("$p")
+}
+
+apply_env_mcp_configs() {
+  local claude_file="$TARGET/.mcp.json"
+  local cursor_file="$TARGET/.cursor/mcp.json"
+  local gemini_file="$TARGET/.gemini/settings.json"
+  local antigravity_file="$TARGET/.gemini/antigravity/mcp_config.json"
+
+  if is_selected_env "claude"; then
+    upsert_mcp_bundle "$claude_file" "mcpServers"
+    register_target_mcp_file "$claude_file"
+  fi
+
+  if is_selected_env "cursor"; then
+    run_cmd "mkdir -p \"$TARGET/.cursor\""
+    upsert_mcp_bundle "$cursor_file" "mcpServers"
+    register_target_mcp_file "$cursor_file"
+  fi
+
+  if is_selected_env "gemini" || is_selected_env "antigravity"; then
+    run_cmd "mkdir -p \"$TARGET/.gemini/antigravity\""
+    upsert_mcp_bundle "$gemini_file" "mcpServers"
+    upsert_mcp_bundle "$antigravity_file" "mcpServers"
+    register_target_mcp_file "$gemini_file"
+    register_target_mcp_file "$antigravity_file"
+  fi
+}
+
+verify_target_mcp_configs() {
+  local file
+  for file in "${TARGET_MCP_FILES[@]-}"; do
+    if [[ ! -f "$file" ]]; then
+      STEP_FAILS+=("MCP verify: missing expected file $file")
+      continue
+    fi
+    if ! grep -q '"ctxo"' "$file" >/dev/null 2>&1; then
+      STEP_FAILS+=("MCP verify: missing ctxo entry in $file")
+    fi
+    if ! grep -q '"context-mode"' "$file" >/dev/null 2>&1; then
+      STEP_FAILS+=("MCP verify: missing context-mode entry in $file")
+    fi
+  done
 }
 
 parse_args() {
@@ -193,16 +304,17 @@ step4_rtk() {
 
 step5_ctxo() {
   step_header 5 "Install Ctxo and set runtime signal"
-  if check_command npx; then
-    run_cmd "cd \"$TARGET\" && npx -y @ctxo/init || true"
+  if check_command npm; then
+    run_cmd "npm install -g @ctxo/cli || true"
   else
-    warn "npx not found. Install Node.js/npm to run Ctxo init."
+    warn "npm not found. Install Node.js/npm to install @ctxo/cli."
   fi
 
-  if [[ ! -f "$TARGET/.mcp.json" ]]; then
-    write_file "$TARGET/.mcp.json" "{\n  \"mcpServers\": {\n    \"ctxo\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"@ctxo/cli\"]\n    }\n  }\n}\n"
+  if check_command npx; then
+    run_cmd "cd \"$TARGET\" && npx @ctxo/cli --help >/dev/null || true"
   else
-    append_if_missing "$TARGET/.mcp.json" "ctxo" "  \"ctxo\": { \"command\": \"npx\", \"args\": [\"-y\", \"@ctxo/cli\"] }"
+    warn "npx not found. Install Node.js/npm to run Ctxo MCP command."
+    STEP_FAILS+=("Step 5: npx not found; cannot run @ctxo/cli")
   fi
 }
 
@@ -213,9 +325,6 @@ step7_context_mode() {
   else
     warn "npm not found. Install Node.js/npm to install context-mode."
   fi
-
-  run_cmd "mkdir -p \"$TARGET/.cursor\""
-  write_file "$TARGET/.cursor/mcp.json" "{\n  \"mcpServers\": {\n    \"context-mode\": {\n      \"command\": \"context-mode\"\n    }\n  }\n}\n"
 }
 
 step8_dev_checklist() {
@@ -241,6 +350,13 @@ map_failure_to_step() {
 
 step9_validate() {
   step_header 9 "Run stack-check (strict)"
+  verify_target_mcp_configs
+  if [[ ${#STEP_FAILS[@]} -gt 0 ]]; then
+    printf 'Pre-validation failures:\n' >&2
+    printf ' - %s\n' "${STEP_FAILS[@]}" >&2
+    exit 1
+  fi
+
   local cmd="cd \"$TARGET\" && STACK_CHECK_STRICT=1 \"$ROOT_DIR/stack-check\""
   if [[ "$DRY_RUN" -eq 1 ]]; then
     say "[dry-run] $cmd"
@@ -268,6 +384,7 @@ main() {
   step4_rtk
   step5_ctxo
   step7_context_mode
+  apply_env_mcp_configs
   step8_dev_checklist
 
   if [[ ${#STEP_FAILS[@]} -gt 0 ]]; then
