@@ -16,8 +16,8 @@ set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 
-# shellcheck disable=SC2034
-READINESS_DOC="${SCRIPT_DIR}/readiness-checklist.md"
+# Bundled file lives at "${SCRIPT_DIR}/readiness-checklist.md" — we print a portable label, not a host path.
+READINESS_REF="readiness-checklist.md (next to this stack-check install)"
 
 if [[ -t 1 ]]; then
   GREEN=$'\033[0;32m' RED=$'\033[0;31m' YELLOW=$'\033[1;33m' CYAN=$'\033[0;36m' DIM=$'\033[0;90m' NC=$'\033[0m'
@@ -363,9 +363,9 @@ if [[ "$CTXO_STATE" != "ok" ]]; then
       "Shell checks cannot prove semantic answer quality; run a quick semantic check in your IDE/client after setup." \
       "$CTXO_DOC_URL" \
       "Call one Ctxo tool (for example blast radius) in your client and verify meaningful output." \
-      "Confirm in ${READINESS_DOC}: blast radius, logic slices, why-context."
+      "Confirm in ${READINESS_REF}: blast radius, logic slices, why-context."
   else
-    echo -e "  ${YELLOW}[MANUAL]${NC} Ctxo post-install semantic checks — see ${READINESS_DOC}"
+    echo -e "  ${YELLOW}[MANUAL]${NC} Ctxo post-install semantic checks — see ${READINESS_REF}"
   fi
 fi
 
@@ -432,7 +432,7 @@ else
     ".git (version control)" "$REQ_L5_GIT" "git" \
     "https://git-scm.com/doc" \
     "git init" \
-    "gsd-2, worktrees, and recovery are still manual; see ${READINESS_DOC}"
+    "gsd-2, worktrees, and recovery are still manual; see ${READINESS_REF}"
 fi
 
 gsd_found=0
@@ -487,6 +487,6 @@ fi
 if [[ $STRICT == 1 ]]; then
   echo -e "  ${DIM}STRICT=1 is set:${NC} any warning above is treated as failure for exit code."
 fi
-echo -e "Full layer + spec-to-code gap: ${DIM}${READINESS_DOC/#$HOME/~}${NC}"
+echo -e "Full layer + spec-to-code gap: ${DIM}$READINESS_REF${NC}"
 
 exit "$EXIT"
