@@ -13,12 +13,12 @@ This checklist ensures your project is correctly configured for the **Agentic Co
 
 ### Automated check
 
-Run [`stack-check`](stack-check) from the **repo you are working in** (after opening your CLI). In **Claude Code**, install the **dev-checklist** plugin so `stack-check` is on the Bash tool `PATH` — see [docs/claude-code.md](docs/claude-code.md). It reports per-layer **OK / WARN / FAIL / MANUAL**, a **VERDICT** line, and **Remediate** links plus example commands for failed checks. It does not run installers for you. Optional [`.stack-check.yaml.example`](.stack-check.yaml.example) lets you set **phase**-specific `require_layer*` flags.
+Run [`stack-check`](stack-check) from the **repo you are working in** (after opening your CLI). In **Claude Code**, install the **dev-checklist** plugin so `stack-check` is on the Bash tool `PATH` — see [docs/claude-code.md](docs/claude-code.md). It reports per-layer **OK / WARN / FAIL / MANUAL**, a **VERDICT** line, and **Remediate** links plus example commands for failed checks. It does not run installers for you. Optional [`.stack-check.yaml.example`](.stack-check.yaml.example) lets you set **phase**-specific `require_layer*` flags (including `require_layer2_superpowers` to hard-require a **repo-local** Superpowers signal).
 
 - [`stack-check`](stack-check) — current verifier (verdict and exit codes).
 - [`verify-readiness.sh`](verify-readiness.sh) — legacy wrapper; calls `stack-check`.
 
-For limits (e.g. Layer 3 = docs proxy, not Ctxo proof), see the header comment in `stack-check`.
+For limits (e.g. Layer 3 = docs proxy, not Ctxo proof), see the header comment in `stack-check`. **Layer 2:** `stack-check` verifies root **rules files** and an **optional** repo-local **Superpowers** signal (vendored skills or a root doc link to [obra/superpowers](https://github.com/obra/superpowers)); it cannot see IDE-only plugin installs. **TDD, verification gates, and atomic commits** below are still **manual** checklist items aligned with the [stack article](https://blog.devgenius.io/the-agentic-coding-stack-7-tools-5-layers-and-the-missing-link-nobody-has-built-yet-de264b260db3), not fully automated here.
 
 ---
 
@@ -32,9 +32,9 @@ For limits (e.g. Layer 3 = docs proxy, not Ctxo proof), see the header comment i
 - [ ] **Success Criteria**: Clear acceptance tests defined in the spec.
 
 ## ⚖️ Layer 2: Agent Discipline
-*Goal: Behavioral guardrails for the AI (superpowers).*
+*Goal: Behavioral guardrails for the AI ([Superpowers](https://github.com/obra/superpowers) / composable skills — see the [Agentic Coding Stack](https://blog.devgenius.io/the-agentic-coding-stack-7-tools-5-layers-and-the-missing-link-nobody-has-built-yet-de264b260db3)).*
 
-- [ ] **Behavioral Instructions**: `.cursorrules`, `instructions.md`, or `superpowers` skill library active.
+- [ ] **Behavioral Instructions**: `.cursorrules`, `instructions.md`, `.clinerules`, or `AGENTS.md`; plus **Superpowers** (marketplace / skills) as your team defines it. `stack-check` only sees **files in the repo** (rules at root + optional Superpowers path or doc mention)—confirm plugin/session behavior yourself.
 - [ ] **TDD Workflow**: Agent is instructed to write tests *before* implementation.
 - [ ] **Verification Gates**: Agent must verify work (run tests/lint) before claiming completion.
 - [ ] **Atomic Commits**: Configure environment to commit per logical change.

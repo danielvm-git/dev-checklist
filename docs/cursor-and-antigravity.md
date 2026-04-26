@@ -1,5 +1,7 @@
 # Cursor and Google Antigravity — install from GitHub
 
+**Index:** For a single place that covers every terminal, IDE, and CLI (including **Cursor Agent CLI** and **Gemini CLI**), use **[terminals-and-clis.md](terminals-and-clis.md)**. This page focuses on **Cursor and Antigravity** plus review-and-run.
+
 **Claude Code** can use the [native plugin](claude-code.md). **Cursor** and **Google Antigravity** do not support that plugin format, so the supported way to “install from GitHub” is the same for both: run the **install script** from this repository (clone + add `stack-check` to your shell `PATH`).
 
 **Repo:** [github.com/danielvm-git/dev-checklist](https://github.com/danielvm-git/dev-checklist)
@@ -48,7 +50,7 @@ chmod +x install.sh
    stack-check
    ```
 
-4. **Rules (Layer 2):** add [`.cursorrules`](https://docs.cursor.com/context/rules-for-ai), [`.cursor/rules/`](https://docs.cursor.com), or `AGENTS.md` in that app; `stack-check` looks for those at the repo root.
+4. **Rules (Layer 2):** add [`.cursorrules`](https://docs.cursor.com/context/rules-for-ai), [`.cursor/rules/`](https://docs.cursor.com), or `AGENTS.md` in that app; `stack-check` looks for those at the repo root. It also looks for a **repo-local** [Superpowers](https://github.com/obra/superpowers) signal (e.g. `.cursor/skills/`, `skills/using-superpowers/`, or a root doc mentioning `obra/superpowers`); see the [Agentic Coding Stack](https://blog.devgenius.io/the-agentic-coding-stack-7-tools-5-layers-and-the-missing-link-nobody-has-built-yet-de264b260db3) for how Layer 2 fits the full stack.
 
 5. **Optional — “Remote rules” from GitHub in Cursor** (editor rules, not the same as `stack-check`): *Cursor Settings → Rules → Add → Remote (GitHub)* can sync rule **files** from a repo. That does not install the `stack-check` binary; use **Option A/B** above for the tool itself.
 

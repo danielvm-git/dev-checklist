@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # stack-check: post-CLI agentic stack verification (5 layers + optional signals).
+# Layers map to the Agentic Coding Stack (see readiness-checklist.md):
+#   https://blog.devgenius.io/the-agentic-coding-stack-7-tools-5-layers-and-the-missing-link-nobody-has-built-yet-de264b260db3
 # See readiness-checklist.md for what cannot be automated. This script does not
-# run installers; on failure it prints Remediate lines (link + example command).
+# fetch the blog or GitHub at runtime; on failure it prints Remediate lines (link + example command).
 #
 # Env:
 #   STACK_CHECK_STRICT=1           any WARN (including advisory) counts as failure (exit 1)
@@ -30,6 +32,7 @@ REQ_L4_RTK=0
 REQ_L4_CONTEXT_MODE=0
 REQ_L5_GIT=1
 REQ_L5_GSD=0
+REQ_L2_SUPERPOWERS=0
 PHASE=""
 
 HARD_FAIL=0
@@ -39,6 +42,21 @@ WARN_N=0
 STRICT="${STACK_CHECK_STRICT:-0}"
 NO_REMED="${STACK_CHECK_NO_REMEDIATION:-0}"
 DEGR_EXIT="${STACK_CHECK_DEGRADED_EXIT:-0}"
+
+# Comma-separated short tags for the VERDICT summary (e.g. "L1: specs/").
+_ADDR_FAIL=""
+_ADDR_WARN=""
+
+add_addr_fail() {
+  local t=$1
+  [[ -n "$_ADDR_FAIL" ]] && _ADDR_FAIL+=", "
+  _ADDR_FAIL+="$t"
+}
+add_addr_warn() {
+  local t=$1
+  [[ -n "$_ADDR_WARN" ]] && _ADDR_WARN+=", "
+  _ADDR_WARN+="$t"
+}
 
 load_simple_yaml() {
   local f=$1
@@ -59,6 +77,9 @@ load_simple_yaml() {
     elif [[ "$line" == *"require_layer2:"* ]]; then
       [[ "$line" =~ :[[:space:]]*true|:[[:space:]]*1$ ]] && REQ_L2=1
       [[ "$line" =~ :[[:space:]]*false|:[[:space:]]*0$ ]] && REQ_L2=0
+    elif [[ "$line" == *"require_layer2_superpowers:"* ]]; then
+      [[ "$line" =~ :[[:space:]]*true|:[[:space:]]*1$ ]] && REQ_L2_SUPERPOWERS=1
+      [[ "$line" =~ :[[:space:]]*false|:[[:space:]]*0$ ]] && REQ_L2_SUPERPOWERS=0
     elif [[ "$line" == *"require_layer3:"* ]]; then
       [[ "$line" =~ :[[:space:]]*true|:[[:space:]]*1$ ]] && REQ_L3=1
       [[ "$line" =~ :[[:space:]]*false|:[[:space:]]*0$ ]] && REQ_L3=0
@@ -84,22 +105,65 @@ elif [[ -f .stack-check.yml ]]; then
   load_simple_yaml .stack-check.yml
 fi
 
+# Agentic Coding Stack (layers / tools): human-readable reference for remediation.
+STACK_GUIDE_URL="https://blog.devgenius.io/the-agentic-coding-stack-7-tools-5-layers-and-the-missing-link-nobody-has-built-yet-de264b260db3"
+SUPERPOWERS_INSTALL_URL="https://github.com/obra/superpowers"
+
+# Repo-local Superpowers / obra signal (no network). See readiness-checklist Layer 2.
+layer2_superpowers_signal() {
+  if [[ -f skills/using-superpowers/SKILL.md ]] || [[ -f .claude/skills/using-superpowers/SKILL.md ]] || [[ -f .cursor/skills/using-superpowers/SKILL.md ]]; then
+    return 0
+  fi
+  if [[ -d .claude/skills ]] && grep -rqE 'obra/superpowers|using-superpowers' .claude/skills 2>/dev/null; then
+    return 0
+  fi
+  if [[ -d skills ]] && grep -rqE 'obra/superpowers|using-superpowers' skills 2>/dev/null; then
+    return 0
+  fi
+  if [[ -d .cursor/skills ]] && grep -rqE 'obra/superpowers|using-superpowers' .cursor/skills 2>/dev/null; then
+    return 0
+  fi
+  local f
+  for f in AGENTS.md CLAUDE.md .cursorrules instructions.md .clinerules; do
+    [[ -f "$f" ]] || continue
+    if grep -qiE 'obra/superpowers|superpowers@superpowers-marketplace|superpowers@claude-plugins-official|/add-plugin[[:space:]]+superpowers|plugin install[[:space:]]+superpowers' "$f" 2>/dev/null; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+# remediate title problem url cmd note [url2]  —  problem may be empty; optional 6th url2 prints as second Doc line
 remediate() {
   local title=$1
-  local url=$2
-  local cmd=$3
-  local note=$4
+  local problem=$2
+  local url=$3
+  local cmd=$4
+  local note=$5
+  local url2="${6-}"
   [[ "$NO_REMED" == 1 ]] && return 0
   echo -e "    ${CYAN}Remediate${NC} ${DIM}[$title]${NC}"
-  echo -e "      ${DIM}Doc:${NC}  $url"
-  [[ -n "$cmd" ]] && echo -e "      ${DIM}Run:${NC}  $cmd"
-  [[ -n "$note" ]] && echo -e "      ${DIM}Note:${NC} $note"
+  if [[ -n "$problem" ]]; then
+    echo -e "      ${DIM}Why:${NC}  $problem"
+  fi
+  echo -e "      ${DIM}Try in order —${NC}"
+  echo -e "        1) ${DIM}Doc:${NC}  $url"
+  local step=2
+  if [[ -n "$url2" ]]; then
+    echo -e "        ${step}) ${DIM}Doc:${NC}  $url2"
+    step=$((step + 1))
+  fi
+  if [[ -n "$cmd" ]]; then
+    echo -e "        ${step}) ${DIM}Run:${NC}  $cmd"
+    step=$((step + 1))
+  fi
+  if [[ -n "$note" ]]; then
+    echo -e "        ${step}) ${DIM}Note:${NC} $note"
+  fi
 }
 
 # out_ok name
-# out_fail name req(0|1) rem...
-# out_soft name  — always advisory warning path
-# out_warn name req(0|1) rem... — for checks that are WARN/ FAIL based on sub-req
+# out_line_fail_or_warn: addr_tag, one_line_why, name, req, rem_title, rem_url, rem_cmd, rem_note
 out_ok() { echo -e "  ${GREEN}[OK]${NC}  $*"; }
 out_manual() {
   local name=$1; shift
@@ -108,33 +172,53 @@ out_manual() {
   remediate "$@" 
 }
 out_line_fail_or_warn() {
-  local name=$1
-  local req=$2
-  local rem_title=$3
-  local rem_url=$4
-  local rem_cmd=$5
-  local rem_note=$6
+  local tag=$1
+  local why=$2
+  local name=$3
+  local req=$4
+  local rem_title=$5
+  local rem_url=$6
+  local rem_cmd=$7
+  local rem_note=$8
+  local rem_url2="${9-}"
   if [[ $req -eq 0 ]]; then
     ANY_WARN=1
+    add_addr_warn "$tag (advisory)"
     ((WARN_N++)) || true
-    echo -e "  ${YELLOW}[WARN]${NC} $name (advisory)"
+    echo -e "  ${YELLOW}[WARN]${NC} $name ${DIM}(advisory)${NC}"
+    if [[ -n "$why" ]]; then
+      echo -e "      ${DIM}What’s wrong:${NC} $why"
+    fi
+    echo -e "      ${DIM}This check is optional;${NC} it does not change the exit code unless ${DIM}STACK_CHECK_STRICT=1${NC}."
     [[ $STRICT == 1 ]] && { HARD_FAIL=1; }
-    [[ "$NO_REMED" == 0 ]] && remediate "$rem_title" "$rem_url" "$rem_cmd" "$rem_note"
+    [[ "$NO_REMED" == 0 ]] && remediate "$rem_title" "$why" "$rem_url" "$rem_cmd" "$rem_note" "$rem_url2"
   else
+    add_addr_fail "$tag"
     echo -e "  ${RED}[FAIL]${NC} $name"
+    if [[ -n "$why" ]]; then
+      echo -e "      ${DIM}What’s wrong:${NC} $why"
+    fi
     HARD_FAIL=1
     ((FAIL_N++)) || true
-    [[ "$NO_REMED" == 0 ]] && remediate "$rem_title" "$rem_url" "$rem_cmd" "$rem_note"
+    [[ "$NO_REMED" == 0 ]] && remediate "$rem_title" "$why" "$rem_url" "$rem_cmd" "$rem_note" "$rem_url2"
   fi
 }
+# out_line_warn: tag, why, label, rem_title, rem_url, rem_cmd, rem_note
 out_line_warn() {
-  local label=$1
-  shift
+  local tag=$1
+  local why=$2
+  local label=$3
+  shift 3
   ANY_WARN=1
+  add_addr_warn "$tag (advisory)"
   ((WARN_N++)) || true
-  echo -e "  ${YELLOW}[WARN]${NC} $label"
+  echo -e "  ${YELLOW}[WARN]${NC} $label ${DIM}(advisory)${NC}"
+  if [[ -n "$why" ]]; then
+    echo -e "      ${DIM}What’s wrong / not detected:${NC} $why"
+  fi
+  echo -e "      ${DIM}This check is optional;${NC} it does not change the exit code unless ${DIM}STACK_CHECK_STRICT=1${NC}."
   [[ $STRICT == 1 ]] && HARD_FAIL=1
-  [[ "$NO_REMED" == 0 ]] && remediate "$1" "$2" "$3" "$4"
+  [[ "$NO_REMED" == 0 ]] && remediate "$1" "$why" "$2" "$3" "$4" "${5-}"
 }
 
 echo -e "${GREEN}stack-check${NC} (agentic stack) ${DIM}— cwd: ${PWD}${NC}"
@@ -145,7 +229,9 @@ echo -e "${YELLOW}Layer 1: Delivery Methodology (spec-kit / BMAD)${NC}"
 if [[ -d specs ]]; then
   out_ok "specs/ directory"
 else
-  out_line_fail_or_warn "specs/ directory" "$REQ_L1" "spec-kit" \
+  out_line_fail_or_warn "L1:specs" \
+    "There is no specs/ directory at the repo root, so a spec-kit (or similar) delivery loop is not visible to this check." \
+    "specs/ directory" "$REQ_L1" "spec-kit" \
     "https://github.com/github/spec-kit" \
     "Follow GitHub spec-kit README (init / specify flow for your language)." \
     "BMAD alternative: npx bmad-method install (see BMAD-METHOD repo)."
@@ -154,27 +240,55 @@ if [[ -d .bmad ]] || { compgen -G "bmad-*" &>/dev/null; } || { compgen -G "BMAD*
   out_ok "optional BMAD-style path (.bmad/ or bmad-*)"
 fi
 
-echo -e "\n${YELLOW}Layer 2: Agent Discipline (rules / superpowers)${NC}"
+echo -e "\n${YELLOW}Layer 2: Agent Discipline (rules / Superpowers — Agentic Coding Stack)${NC}"
 if [[ -f .cursorrules ]] || [[ -f instructions.md ]] || [[ -f .clinerules ]] || [[ -f AGENTS.md ]]; then
   out_ok "agent rules (project: .cursorrules, instructions, .clinerules, or AGENTS.md)"
 else
-  out_line_fail_or_warn "agent rules in repo root" "$REQ_L2" "Cursor rules" \
+  out_line_fail_or_warn "L2:agent-rules" \
+    "The repo has none of: .cursorrules, instructions.md, .clinerules, AGENTS.md at the root — the agent has no project-level rules file to follow." \
+    "agent rules in repo root" "$REQ_L2" "Cursor rules" \
     "https://docs.cursor.com/context/rules-for-ai" \
     "Add .cursorrules, instructions.md, .clinerules, or AGENTS.md at the repo root." \
     "Portable convention: https://agents.md"
+fi
+
+if layer2_superpowers_signal; then
+  out_ok "Superpowers / Layer 2 stack signal (skills path or root doc reference to obra/superpowers)"
+else
+  if [[ $REQ_L2_SUPERPOWERS -eq 0 ]]; then
+    out_line_warn "L2:superpowers" \
+      "No repo-local Superpowers signal (vendored skills/using-superpowers, .claude/skills, .cursor/skills, or root doc mentioning obra/superpowers). Plugin-only installs are invisible here — link the stack in AGENTS.md or vendor skills if you want this check to pass." \
+      "Superpowers signal (Layer 2, optional)" \
+      "Agentic stack + Superpowers" \
+      "$STACK_GUIDE_URL" \
+      "Cursor: /add-plugin superpowers  ·  Claude Code: /plugin install superpowers@claude-plugins-official (see Superpowers README)." \
+      "" \
+      "$SUPERPOWERS_INSTALL_URL"
+  else
+    out_line_fail_or_warn "L2:superpowers" \
+      "This project’s config sets require_layer2_superpowers but no repo-local Superpowers signal was found (see advisory text in default mode)." \
+      "Superpowers signal (Layer 2)" 1 "Agentic stack + Superpowers" \
+      "$STACK_GUIDE_URL" \
+      "Cursor: /add-plugin superpowers  ·  Claude Code: /plugin install superpowers@claude-plugins-official." \
+      "require_layer2_superpowers: true in .stack-check.yaml" \
+      "$SUPERPOWERS_INSTALL_URL"
+  fi
 fi
 
 echo -e "\n${YELLOW}Layer 3: Technical Context (docs proxy; Ctxo = manual)${NC}"
 if [[ -f README.md ]] || [[ -f PROJECT.md ]]; then
   out_ok "README.md or PROJECT.md"
 else
-  out_line_fail_or_warn "README.md or PROJECT.md" "$REQ_L3" "project documentation" \
+  out_line_fail_or_warn "L3:readme" \
+    "No README.md or PROJECT.md at the repo root, so new contributors and agents have no default orientation doc." \
+    "README.md or PROJECT.md" "$REQ_L3" "project documentation" \
     "https://github.com" \
     "Add README.md (or PROJECT.md) with intent and how to work in the repo." \
     "This does not replace Ctxo or semantic tools — confirm those in the checklist."
 fi
 if [[ "$NO_REMED" == 0 ]]; then
   out_manual "Ctxo (or similar) — semantic / MCP setup" "Ctxo" \
+    "The script cannot see your IDE’s semantic index; you must confirm Ctxo (or an equivalent) yourself." \
     "https://blog.devgenius.io/the-agentic-coding-stack-7-tools-5-layers-and-the-missing-link-nobody-has-built-yet-de264b260db3" \
     "Install/configure your chosen semantic-codebase MCP in the IDE; index the repo as required." \
     "Confirm in ${READINESS_DOC}: blast radius, logic slices, why-context."
@@ -187,11 +301,15 @@ if command -v rtk &>/dev/null; then
   out_ok "rtk in PATH"
 else
   if [[ $REQ_L4_RTK -eq 0 ]]; then
-    out_line_warn "rtk in PATH" "RTK (rtk-ai)" "https://github.com/rtk-ai/rtk" \
+    out_line_warn "L4:rtk" \
+      "The rtk command was not found on PATH. This check is optional unless your .stack-check.yaml sets require_layer4_rtk: true." \
+      "rtk in PATH" "RTK (rtk-ai)" "https://github.com/rtk-ai/rtk" \
       "brew install rtk  OR  curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh" \
       "Then: rtk init -g  or  rtk init -g --agent cursor  (see repo README for Gemini/Codex)"
   else
-    out_line_fail_or_warn "rtk in PATH" 1 "RTK (rtk-ai)" "https://github.com/rtk-ai/rtk" \
+    out_line_fail_or_warn "L4:rtk" \
+      "This project’s config requires rtk (require_layer4_rtk) but the rtk command is not on PATH." \
+      "rtk in PATH" 1 "RTK (rtk-ai)" "https://github.com/rtk-ai/rtk" \
       "brew install rtk  OR  curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh" \
       "This phase requires rtk; see repo README for hook setup."
   fi
@@ -216,14 +334,18 @@ if [[ $ctx_found -eq 1 ]]; then
   out_ok "MCP / context heuristics (optional): pattern seen under .cursor/ or mcp*"
 else
   if [[ $REQ_L4_CONTEXT_MODE -eq 0 ]]; then
-    out_line_warn "context-mode in MCP (heuristic, optional)" "context-mode" \
+    out_line_warn "L4:context-mode" \
+      "We only grep for the word “context” under .cursor/, mcps/, or mcp.json. Nothing matched — you may still have a valid setup; confirm in the IDE (this signal is shallow)." \
+      "context-mode in MCP (heuristic, optional)" "context-mode" \
       "https://blog.devgenius.io/the-agentic-coding-stack-7-tools-5-layers-and-the-missing-link-nobody-has-built-yet-de264b260db3" \
       "Add a context / sandbox MCP server in .cursor (or your IDE) and ensure the agent uses it for long research." \
-      "Detection is shallow; verify in the IDE (Layer 4 in stack article)."
+      "False OK/WARN is possible; verify in the IDE (Layer 4 in stack article)."
   else
-    out_line_fail_or_warn "context-mode in MCP" 1 "context-mode" \
+    out_line_fail_or_warn "L4:context-mode" \
+      "This project’s config requires context-mode evidence (require_layer4_context_mode) but the shallow grep did not find a match under .cursor/, mcps/, or mcp.json." \
+      "context-mode in MCP" 1 "context-mode" \
       "https://blog.devgenius.io/the-agentic-coding-stack-7-tools-5-layers-and-the-missing-link-nobody-has-built-yet-de264b260db3" \
-      "Configure context-mode in MCP per your product docs." \
+      "Configure context-mode in MCP per your product docs and ensure file content matches the heuristic or adjust the check." \
       "This phase has require_layer4_context_mode: true in .stack-check.yaml"
   fi
 fi
@@ -232,7 +354,9 @@ echo -e "\n${YELLOW}Layer 5: Product surface (git / GSD)${NC}"
 if [[ -d .git ]]; then
   out_ok "git repository (proxy for an integrated VCS / surface)"
 else
-  out_line_fail_or_warn ".git (version control)" "$REQ_L5_GIT" "git" \
+  out_line_fail_or_warn "L5:git" \
+    "This directory is not a git working tree (no .git) — stack checks expect version control for the app surface." \
+    ".git (version control)" "$REQ_L5_GIT" "git" \
     "https://git-scm.com/doc" \
     "git init" \
     "gsd-2, worktrees, and recovery are still manual; see ${READINESS_DOC}"
@@ -249,12 +373,16 @@ if [[ $gsd_found -eq 1 ]]; then
   out_ok "GSD / planning signal (.gsd, .planning, or gsd on PATH)"
 else
   if [[ $REQ_L5_GSD -eq 0 ]]; then
-    out_line_warn "GSD or .planning/ (optional)" "GSD" \
+    out_line_warn "L5:gsd" \
+      "No gsd on PATH and no .gsd/ or .planning/ — GSD-style planning is optional unless require_layer5_gsd is set." \
+      "GSD or .planning/ (optional)" "GSD" \
       "https://github.com" \
       "Use your team’s GSD or milestone workflow; gsd-2 is the “product surface” in the stack article." \
       "Optional: add .planning/ (e.g. GSD v1) or install a gsd CLI if your org uses it."
   else
-    out_line_fail_or_warn "GSD or .planning" 1 "GSD" \
+    out_line_fail_or_warn "L5:gsd" \
+      "This project’s config requires a GSD signal (require_layer5_gsd) but none of gsd on PATH, .gsd/, or .planning/ was found." \
+      "GSD or .planning" 1 "GSD" \
       "https://github.com" \
       "Add .gsd, .planning, or gsd on PATH per your org." \
       "require_layer5_gsd: true in your stack-check config"
@@ -274,6 +402,18 @@ else
   EXIT=0
 fi
 echo -e "VERDICT: ${CYAN}$VERDICT${NC} (required-check failures: $FAIL_N, advisory warnings: $WARN_N)"
+if [[ -n "$_ADDR_FAIL" ]]; then
+  echo -e "  ${DIM}Address (required):${NC}  $_ADDR_FAIL"
+fi
+if [[ -n "$_ADDR_WARN" ]]; then
+  echo -e "  ${DIM}Advisory only:${NC}        $_ADDR_WARN"
+fi
+if [[ -n "$_ADDR_WARN" ]]; then
+  echo -e "  ${DIM}Exit policy:${NC}  Advisory items do not use exit 1 by themselves. Set ${DIM}STACK_CHECK_STRICT=1${NC} to treat them as failure; set ${DIM}STACK_CHECK_DEGRADED_EXIT=1${NC} to use exit 2 on degraded (warnings without hard fail)."
+fi
+if [[ $STRICT == 1 ]]; then
+  echo -e "  ${DIM}STRICT=1 is set:${NC} any warning above is treated as failure for exit code."
+fi
 echo -e "Full layer + spec-to-code gap: ${DIM}${READINESS_DOC/#$HOME/~}${NC}"
 
 exit "$EXIT"

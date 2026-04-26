@@ -52,9 +52,9 @@ claude plugin install dev-checklist@dev-checklist-catalog
 stack-check
 ```
 
-`stack-check` is on `PATH` only while the **dev-checklist** plugin is enabled. It validates that repo’s tree (`specs/`, rules, `README`, git, etc.) and prints a **VERDICT** and **Remediate** lines.
+`stack-check` is on `PATH` only while the **dev-checklist** plugin is enabled. It validates that repo’s tree (`specs/`, rules, optional **Superpowers** repo signal, `README`, git, etc.) and prints a **VERDICT** and **Remediate** lines.
 
-3. Optional: copy [`.stack-check.yaml.example`](../.stack-check.yaml.example) to that app as `.stack-check.yaml` to require RTK, GSD, etc. for a stricter **phase**.
+3. Optional: copy [`.stack-check.yaml.example`](../.stack-check.yaml.example) to that app as `.stack-check.yaml` to require RTK, GSD, `require_layer2_superpowers`, etc. for a stricter **phase**.
 
 ## If you can’t use marketplaces (offline / policy)
 
@@ -71,9 +71,10 @@ rtk init -g
 
 Then restart Claude Code. `stack-check` will **WARN** if `rtk` is missing unless you require it in `.stack-check.yaml`.
 
-## See also (other IDEs)
+## See also (other IDEs / CLIs)
 
-- **[Cursor and Google Antigravity](cursor-and-antigravity.md)** — no Claude plugin; use **[install from GitHub](../install.sh)** (same for Cursor and Antigravity: clone + `PATH`), then the integrated terminal. Optional RTK.
+- **[terminals-and-clis.md](terminals-and-clis.md)** — one **Bash** install for Cursor, Antigravity, Cursor Agent CLI, Gemini CLI, etc.; this doc is the **Claude Code–only** path.
+- **[Cursor and Google Antigravity](cursor-and-antigravity.md)** — no Claude plugin; use **[install from GitHub](../install.sh)** (clone + `PATH`), then the integrated terminal. Optional RTK.
 
 ## References
 

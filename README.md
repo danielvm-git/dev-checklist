@@ -1,12 +1,28 @@
 # dev-checklist
 
-**Agentic stack checks for your repo** — a `stack-check` script that prints **VERDICT**, **OK/WARN/FAIL**, and **Remediate** (doc + example command). Best experience in **Claude Code** as a **plugin** so `stack-check` is on the Bash tool `PATH`.
+**Agentic stack checks for your repo** — a `stack-check` script that prints **VERDICT**, **OK/WARN/FAIL**, and **Remediate** (doc + example command). The same `stack-check` binary is used in every environment; only **how** you get it on `PATH` changes.
 
 [![GitHub](https://img.shields.io/badge/github-danielvm--git%2Fdev--checklist-blue?logo=github)](https://github.com/danielvm-git/dev-checklist)
 
 ---
 
-## Install for Claude Code (recommended)
+| Option | When to use | How |
+|--------|-------------|-----|
+| **1 — Bash (any terminal, IDE, or CLI)** | Default for **everyone** (Cursor, Antigravity, VS Code, Cursor Agent CLI, Gemini CLI, etc.) | [install from GitHub](#install-from-github-bash) — clone + add to shell `PATH` |
+| **2 — Claude Code plugin** | You use **Claude Code** and want `stack-check` on the **Bash** tool `PATH` without editing `~/.zshrc` | [Claude Code plugin steps](#install-for-claude-code) |
+
+Full comparison (Cursor / Antigravity / `agent` / Gemini): **[docs/terminals-and-clis.md](docs/terminals-and-clis.md)**.
+
+## Install from GitHub (Bash)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/danielvm-git/dev-checklist/main/install.sh | bash
+```
+
+- **Update:** re-run the same command (it `git pull`s if the clone already exists), or: `bash ~/.local/share/dev-checklist/install.sh --update-only`
+- **Details:** [docs/terminals-and-clis.md](docs/terminals-and-clis.md) (also: [docs/cursor-and-antigravity.md](docs/cursor-and-antigravity.md) for review-before-run and Antigravity allow list). Optional: [RTK](https://github.com/rtk-ai/rtk) flags `--agent cursor` / `--agent antigravity`.
+
+## Install for Claude Code
 
 1. **Add this repo as a plugin marketplace** (GitHub: `danielvm-git/dev-checklist`):
 
@@ -31,14 +47,6 @@
 Full detail, scopes (`--scope project`), and RTK: **[docs/claude-code.md](docs/claude-code.md)**.
 
 **What gets installed:** the plugin adds [`bin/stack-check`](bin/stack-check) to the Bash `PATH` ([Claude Code `bin/` behavior](https://code.claude.com/docs/en/plugins-reference#file-locations-reference)). The real script and [`readiness-checklist.md`](readiness-checklist.md) live in the same repo.
-
-**Cursor, VS Code, Google Antigravity, etc.** — no Claude Code plugin. **Install from GitHub** (clone + `PATH`):
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/danielvm-git/dev-checklist/main/install.sh | bash
-```
-
-Details, review-before-run, and Antigravity terminal allow list: **[docs/cursor-and-antigravity.md](docs/cursor-and-antigravity.md)**. Optional: [RTK](https://github.com/rtk-ai/rtk) flags `--agent cursor` / `--agent antigravity`.
 
 ---
 
@@ -73,7 +81,7 @@ cd /path/to/your/application
 
 ## Phase rules (optional)
 
-Copy [`.stack-check.yaml.example`](.stack-check.yaml.example) to **your app** as `.stack-check.yaml` and set `require_layer4_rtk`, etc.
+Copy [`.stack-check.yaml.example`](.stack-check.yaml.example) to **your app** as `.stack-check.yaml` and set `require_layer4_rtk`, `require_layer2_superpowers`, etc.
 
 ## Repo layout (for contributors)
 
@@ -85,8 +93,9 @@ Copy [`.stack-check.yaml.example`](.stack-check.yaml.example) to **your app** as
 | [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json) | Marketplace catalog (install via `@dev-checklist-catalog`). |
 | [readiness-checklist.md](readiness-checklist.md) | Full five layers + spec-to-code gap (manual). |
 | [session-start.md](session-start.md) | Short daily session boot. |
+| [docs/terminals-and-clis.md](docs/terminals-and-clis.md) | **One install for all terminals, IDEs, and CLIs** (Bash + per-tool notes). |
 | [docs/cursor-and-antigravity.md](docs/cursor-and-antigravity.md) | **Cursor + Antigravity: install from GitHub** via [`install.sh`](install.sh). |
-| [install.sh](install.sh) | Clone/update repo + add `~/.local/share/dev-checklist` to `PATH` (zsh/bash). |
+| [install.sh](install.sh) | Clone/update repo + add `~/.local/share/dev-checklist` to `PATH` (zsh/bash). Supports `--update-only`. |
 | [verify-readiness.sh](verify-readiness.sh) | Legacy; runs `stack-check`. |
 
 **Background:** [The Agentic Coding Stack (Dev Genius)](https://blog.devgenius.io/the-agentic-coding-stack-7-tools-5-layers-and-the-missing-link-nobody-has-built-yet-de264b260db3)
