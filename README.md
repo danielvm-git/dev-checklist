@@ -1,110 +1,184 @@
 # dev-checklist
 
-**Agentic stack checks for your repo** — a `stack-check` script that prints **VERDICT**, **OK/WARN/FAIL**, and **Remediate** (doc + example command). The same `stack-check` binary is used in every environment; only **how** you get it on `PATH` changes.
+`stack-check` verifies whether your repo shows the agentic setup signals it can actually detect (files in repo + commands on PATH), then prints `OK`, `WARN`, or `FAIL` per layer.
 
 [![GitHub](https://img.shields.io/badge/github-danielvm--git%2Fdev--checklist-blue?logo=github)](https://github.com/danielvm-git/dev-checklist)
 
----
+## 9-step tyre-change setup (checker-aligned)
 
-| Option | When to use | How |
-|--------|-------------|-----|
-| **1 — Bash (any terminal, IDE, or CLI)** | Default for **everyone** (Cursor, Antigravity, VS Code, Cursor Agent CLI, Gemini CLI, etc.) | [install from GitHub](#install-from-github-bash) — clone + add to shell `PATH` |
-| **2 — Claude Code plugin** | You use **Claude Code** and want `stack-check` on the **Bash** tool `PATH` without editing `~/.zshrc` | [Claude Code plugin steps](#install-for-claude-code) |
+Use this if you want a strict sequence where step 9 passes based on what the checker expects.
 
-Full comparison (Cursor / Antigravity / `agent` / Gemini): **[docs/terminals-and-clis.md](docs/terminals-and-clis.md)**.
+### One command (recommended)
 
-## Install from GitHub (Bash)
+```bash
+bash install-stack.sh --mode greenfield --target /path/to/app --env all --strict --yes
+```
+
+For an existing project:
+
+```bash
+bash install-stack.sh --mode existing --target /path/to/existing/repo --env all --strict --yes
+```
+
+### Manual 9-step sequence
+
+#### Step 1 — Create a folder (or choose existing repo)
+
+- Goal: have a project root with git + docs.
+- Command (new folder):
+
+```bash
+mkdir -p /path/to/app && cd /path/to/app && git init
+test -f README.md || printf '# App\n' > README.md
+```
+
+- Checker expects: `.git` and `README.md` or `PROJECT.md`.
+- Verify: `test -d .git && test -f README.md && echo OK`.
+
+#### Step 2 — Install spec-kit in a checkable way
+
+- Goal: install spec-kit and ensure Layer 1 signal exists.
+- Commands:
+
+```bash
+uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
+mkdir -p specs
+```
+
+- Checker expects: `specs/` at repo root.
+- Verify: `test -d specs && echo OK`.
+- Source: [spec-kit](https://github.com/github/spec-kit).
+
+#### Step 3 — Install Superpowers in a checkable way
+
+- Goal: plugin/runtime install + repo-local signal.
+- Commands:
+
+```bash
+test -f AGENTS.md || printf '# Agent Rules\n' > AGENTS.md
+printf 'Superpowers: https://github.com/obra/superpowers\n' >> AGENTS.md
+```
+
+- Install plugin by tool:
+  - Cursor: `/add-plugin superpowers`
+  - Claude Code: `/plugin install superpowers@claude-plugins-official`
+  - Gemini: `gemini extensions install https://github.com/obra/superpowers`
+- Checker expects: one scanned root file contains `obra/superpowers` or vendored `skills/using-superpowers/SKILL.md`.
+- Verify: `rg -n "obra/superpowers" README.md AGENTS.md CLAUDE.md .cursorrules instructions.md .clinerules`.
+- Source: [Superpowers](https://github.com/obra/superpowers).
+
+#### Step 4 — Install RTK in a checkable way
+
+- Goal: `rtk` available on PATH.
+- Commands:
+
+```bash
+brew install rtk
+# or:
+curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
+```
+
+- Checker expects: `rtk` command resolvable.
+- Verify: `command -v rtk && rtk --version`.
+- Source: [RTK](https://github.com/rtk-ai/rtk).
+
+#### Step 5 — Install Ctxo in a checkable way
+
+- Goal: Ctxo runtime wired for your IDE/CLI.
+- Commands:
+
+```bash
+npx -y @ctxo/init
+```
+
+- Checker note: Layer 3 Ctxo is marked `MANUAL` in current `stack-check`.
+- Verify runtime: use your IDE MCP tools and Ctxo docs flow.
+- Optional local signal:
+
+```bash
+cat > .mcp.json <<'EOF'
+{
+  "mcpServers": {
+    "ctxo": { "command": "npx", "args": ["-y", "@ctxo/cli"] }
+  }
+}
+EOF
+```
+
+- Source: [Ctxo](https://github.com/alperhankendi/Ctxo).
+
+#### Step 7 — Install context-mode in a checkable way
+
+- Goal: context-mode installed and checker heuristic visible.
+- Commands:
+
+```bash
+npm install -g context-mode
+mkdir -p .cursor
+cat > .cursor/mcp.json <<'EOF'
+{
+  "mcpServers": {
+    "context-mode": { "command": "context-mode" }
+  }
+}
+EOF
+```
+
+- Checker expects (current heuristic): the word `context` in `.cursor/`, `mcps/`, or `mcp.json`.
+- Verify: `rg -n "context" .cursor mcps mcp.json`.
+- Source: [context-mode](https://github.com/mksglu/context-mode).
+
+#### Step 8 — Install dev-checklist
+
+- Goal: `stack-check` available and strict config applied.
+- Commands:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/danielvm-git/dev-checklist/main/install.sh | bash
 ```
 
-- **Update:** re-run the same command (it `git pull`s if the clone already exists), or: `bash ~/.local/share/dev-checklist/install.sh --update-only`
-- **Details:** [docs/terminals-and-clis.md](docs/terminals-and-clis.md) (also: [docs/cursor-and-antigravity.md](docs/cursor-and-antigravity.md) for review-before-run and Antigravity allow list). Optional: [RTK](https://github.com/rtk-ai/rtk) flags `--agent cursor` / `--agent antigravity`.
-
-## Install for Claude Code
-
-1. **Add this repo as a plugin marketplace** (GitHub: `danielvm-git/dev-checklist`):
-
-   ```text
-   /plugin marketplace add danielvm-git/dev-checklist
-   ```
-
-2. **Install the plugin** (catalog id `dev-checklist-catalog`):
-
-   ```text
-   /plugin install dev-checklist@dev-checklist-catalog
-   ```
-
-3. **Reload:** `/reload-plugins`
-
-4. In your **app** project root, in the **Bash** / terminal tool, run:
-
-   ```bash
-   stack-check
-   ```
-
-Full detail, scopes (`--scope project`), and RTK: **[docs/claude-code.md](docs/claude-code.md)**.
-
-**What gets installed:** the plugin adds [`bin/stack-check`](bin/stack-check) to the Bash `PATH` ([Claude Code `bin/` behavior](https://code.claude.com/docs/en/plugins-reference#file-locations-reference)). The real script and [`readiness-checklist.md`](readiness-checklist.md) live in the same repo.
-
----
-
-## Without `install.sh` (manual Git)
-
-From **your application repo** with a one-off clone path:
+Then in your app repo create strict config:
 
 ```bash
-git clone https://github.com/danielvm-git/dev-checklist.git
-cd /path/to/your/application
-../dev-checklist/stack-check
+cat > .stack-check.yaml <<'EOF'
+phase: "bootstrap"
+require_layer1: true
+require_layer2: true
+require_layer2_superpowers: true
+require_layer3: true
+require_layer4_rtk: true
+require_layer4_context_mode: true
+require_layer5_gitsurface: true
+require_layer5_gsd: false
+EOF
 ```
 
-**Single file only:**  
-`https://raw.githubusercontent.com/danielvm-git/dev-checklist/main/stack-check` — save, `chmod +x`. Best with a full clone or copy [`readiness-checklist.md`](readiness-checklist.md) next to the script.
+#### Step 9 — Run stack-check (strict)
 
----
+- Goal: fail fast if any expected signal is missing.
+- Command:
 
-## Environment
+```bash
+STACK_CHECK_STRICT=1 stack-check
+```
 
-| Variable | Meaning |
-|----------|---------|
-| `STACK_CHECK_STRICT=1` | Treat advisory **WARN** as failure (exit 1). |
-| `STACK_CHECK_NO_REMEDIATION=1` | Hide **Remediate** blocks. |
-| `STACK_CHECK_DEGRADED_EXIT=1` | Exit **2** on degraded (warnings, no hard fail on required checks). |
+- Expected: exit code `0` and `VERDICT: ready`.
+- If not: follow `Address (required)` tags and map to setup step:
+  - `L1:specs` -> Step 2
+  - `L2:*` -> Step 3
+  - `L4:rtk` -> Step 4
+  - `L4:context-mode` -> Step 7
+  - `L5:git` -> Step 1
 
-## Exit codes
+## What `stack-check` can and cannot guarantee
 
-- **0** — `ready` or `degraded` (advisory warnings only, by default).
-- **1** — `not_ready` or `STRICT` with a warning.
-- **2** — only with `STACK_CHECK_DEGRADED_EXIT=1` when result is **degraded**.
+- Guaranteed checks are filesystem/PATH signals only.
+- Plugin runtime behavior (Ctxo deep indexing, IDE session hooks) still needs runtime verification in your tool.
+- This boundary is intentional so results are deterministic and scriptable.
 
-## Phase rules (optional)
+## Fast references
 
-Copy [`.stack-check.yaml.example`](.stack-check.yaml.example) to **your app** as `.stack-check.yaml` and set `require_layer4_rtk`, `require_layer2_superpowers`, etc.
-
-## Repo layout (for contributors)
-
-| Path | Role |
-|------|------|
-| [`stack-check`](stack-check) | Main verifier. |
-| [`bin/stack-check`](bin/stack-check) | Wrapper for the Claude Code plugin; calls repo-root `stack-check`. |
-| [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) | Plugin manifest. |
-| [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json) | Marketplace catalog (install via `@dev-checklist-catalog`). |
-| [readiness-checklist.md](readiness-checklist.md) | Full five layers + spec-to-code gap (manual). |
-| [session-start.md](session-start.md) | Short daily session boot. |
-| [docs/terminals-and-clis.md](docs/terminals-and-clis.md) | **One install for all terminals, IDEs, and CLIs** (Bash + per-tool notes). |
-| [docs/cursor-and-antigravity.md](docs/cursor-and-antigravity.md) | **Cursor + Antigravity: install from GitHub** via [`install.sh`](install.sh). |
-| [install.sh](install.sh) | Clone/update repo + add `~/.local/share/dev-checklist` to `PATH` (zsh/bash). Supports `--update-only`. |
-| [verify-readiness.sh](verify-readiness.sh) | Legacy; runs `stack-check`. |
-
-**Background:** [The Agentic Coding Stack (Dev Genius)](https://blog.devgenius.io/the-agentic-coding-stack-7-tools-5-layers-and-the-missing-link-nobody-has-built-yet-de264b260db3)
-
-## Troubleshooting
-
-- **Remediate** lines point to install docs; the script does not run installers.
-- **Limitations:** filesystem / `PATH` only — no proof of Ctxo index or gsd-2 worktrees; see [readiness-checklist.md](readiness-checklist.md).
-
-## README style
-
-Aim: clear “install + use” for newcomers ([kickass README](https://meakaakka.medium.com/a-beginners-guide-to-writing-a-kickass-readme-7ac01da88ab3), [Readme Driven Development](http://tom.preston-werner.com/2010/08/23/readme-driven-development.html)).
+- Universal terminal notes: [docs/terminals-and-clis.md](docs/terminals-and-clis.md)
+- Full readiness checklist: [readiness-checklist.md](readiness-checklist.md)
+- Daily startup checklist: [session-start.md](session-start.md)
+- Kickass README inspiration: [Medium article](https://meakaakka.medium.com/a-beginners-guide-to-writing-a-kickass-readme-7ac01da88ab3)

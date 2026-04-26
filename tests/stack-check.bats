@@ -28,6 +28,16 @@ stack_minimal_tree() {
   [[ "$output" != *"[WARN]"*"Superpowers signal (Layer 2, optional)"* ]]
 }
 
+@test "Layer 2 Superpowers OK when README.md links obra/superpowers" {
+  stack_minimal_tree
+  printf '%s\n' "We use [Superpowers](https://github.com/obra/superpowers)." >"$FIXTURE/README.md"
+  cd "$FIXTURE" || exit 1
+  run bash "$REPO_ROOT/stack-check"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == *"Superpowers / Layer 2 stack signal"* ]]
+  [[ "$output" != *"Superpowers signal (Layer 2, optional)"* ]]
+}
+
 @test "Layer 2 Superpowers advisory WARN when no signal" {
   stack_minimal_tree
   cd "$FIXTURE" || exit 1

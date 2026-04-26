@@ -124,7 +124,7 @@ layer2_superpowers_signal() {
     return 0
   fi
   local f
-  for f in AGENTS.md CLAUDE.md .cursorrules instructions.md .clinerules; do
+  for f in README.md AGENTS.md CLAUDE.md .cursorrules instructions.md .clinerules; do
     [[ -f "$f" ]] || continue
     if grep -qiE 'obra/superpowers|superpowers@superpowers-marketplace|superpowers@claude-plugins-official|/add-plugin[[:space:]]+superpowers|plugin install[[:space:]]+superpowers' "$f" 2>/dev/null; then
       return 0
@@ -255,14 +255,15 @@ fi
 if layer2_superpowers_signal; then
   out_ok "Superpowers / Layer 2 stack signal (skills path or root doc reference to obra/superpowers)"
 else
+  SP_REM_NOTE="Plugin loads Superpowers in your editor; stack-check only reads the repo. To clear this check, add a line mentioning obra/superpowers in README.md, AGENTS.md, or another scanned root file, or vendor skills/using-superpowers/."
   if [[ $REQ_L2_SUPERPOWERS -eq 0 ]]; then
     out_line_warn "L2:superpowers" \
-      "No repo-local Superpowers signal (vendored skills/using-superpowers, .claude/skills, .cursor/skills, or root doc mentioning obra/superpowers). Plugin-only installs are invisible here — link the stack in AGENTS.md or vendor skills if you want this check to pass." \
+      "No repo-local Superpowers signal (vendored skills/using-superpowers, .claude/skills, .cursor/skills, or root doc such as README.md / AGENTS.md mentioning obra/superpowers). Plugin-only installs are invisible here — add a doc line or vendor skills if you want this check to pass." \
       "Superpowers signal (Layer 2, optional)" \
       "Agentic stack + Superpowers" \
       "$STACK_GUIDE_URL" \
       "Cursor: /add-plugin superpowers  ·  Claude Code: /plugin install superpowers@claude-plugins-official (see Superpowers README)." \
-      "" \
+      "$SP_REM_NOTE" \
       "$SUPERPOWERS_INSTALL_URL"
   else
     out_line_fail_or_warn "L2:superpowers" \
@@ -270,7 +271,7 @@ else
       "Superpowers signal (Layer 2)" 1 "Agentic stack + Superpowers" \
       "$STACK_GUIDE_URL" \
       "Cursor: /add-plugin superpowers  ·  Claude Code: /plugin install superpowers@claude-plugins-official." \
-      "require_layer2_superpowers: true in .stack-check.yaml" \
+      "require_layer2_superpowers: true in .stack-check.yaml — add a repo-local signal (README.md, AGENTS.md, or vendor skills/using-superpowers/) so this check can pass." \
       "$SUPERPOWERS_INSTALL_URL"
   fi
 fi

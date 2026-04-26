@@ -2,6 +2,14 @@
 
 **`stack-check` is a shell script.** The same install works for any product that can run a normal shell with your `PATH` (integrated terminal, Cursor Agent CLI, Gemini CLI, etc.). You do **not** need a separate installer per tool.
 
+If you want a strict end-to-end setup sequence (spec-kit, superpowers, RTK, Ctxo, context-mode, dev-checklist) aligned to what `stack-check` detects, use:
+
+```bash
+bash install-stack.sh --mode greenfield --target /path/to/app --env all --strict --yes
+```
+
+Run from this repository root, then execute step 9 in your target app repo.
+
 ## Option 1 — Any terminal (recommended for everyone)
 
 Use the same [install.sh](https://github.com/danielvm-git/dev-checklist/blob/main/install.sh) everywhere:
