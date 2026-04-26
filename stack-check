@@ -357,14 +357,16 @@ else
     "Configure MCP (ctxo), run ctxo index, then verify ctxo status in the repo root." \
     "Set require_layer3_ctxo: true in .stack-check.yaml to enforce this in strict phases."
 fi
-if [[ "$NO_REMED" == 0 ]]; then
-  out_manual "Ctxo semantic quality checks (secondary)" "Ctxo semantic checks" \
-    "Shell checks cannot prove semantic answer quality; confirm core Ctxo queries in your IDE/client." \
-    "$CTXO_DOC_URL" \
-    "Call one Ctxo tool (for example blast radius) in your client and verify meaningful output." \
-    "Confirm in ${READINESS_DOC}: blast radius, logic slices, why-context."
-else
-  echo -e "  ${YELLOW}[MANUAL]${NC} Ctxo semantic quality checks — see ${READINESS_DOC}"
+if [[ "$CTXO_STATE" != "ok" ]]; then
+  if [[ "$NO_REMED" == 0 ]]; then
+    out_manual "Ctxo post-install semantic checks (secondary)" "Ctxo semantic checks" \
+      "Shell checks cannot prove semantic answer quality; run a quick semantic check in your IDE/client after setup." \
+      "$CTXO_DOC_URL" \
+      "Call one Ctxo tool (for example blast radius) in your client and verify meaningful output." \
+      "Confirm in ${READINESS_DOC}: blast radius, logic slices, why-context."
+  else
+    echo -e "  ${YELLOW}[MANUAL]${NC} Ctxo post-install semantic checks — see ${READINESS_DOC}"
+  fi
 fi
 
 echo -e "\n${YELLOW}Layer 4: Token optimization (RTK, context-mode)${NC}"
