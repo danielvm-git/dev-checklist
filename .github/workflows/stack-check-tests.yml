@@ -1,4 +1,4 @@
-name: stack-check tests
+name: CI
 
 on:
   push:
@@ -6,12 +6,29 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  bats:
-    runs-on: ubuntu-latest
+  lint-and-test:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Run bats (bats-core from GitHub, no sudo)
+
+      # shellcheck is pre-installed on ubuntu runners; -S error keeps
+      # pre-existing style/info-level findings from failing CI.
+      - name: ShellCheck
+        run: shellcheck -S error install.sh install-stack.sh verify-readiness.sh stack-check
+
+      - name: Install bats
         run: |
-          git clone --depth 1 https://github.com/bats-core/bats-core.git /tmp/bats-core
-          /tmp/bats-core/bin/bats tests/stack-check.bats
+          sudo apt-get update -qq
+          sudo apt-get install -y bats
+
+      - name: Run bats tests
+        run: bats tests/stack-check.bats
