@@ -8,7 +8,7 @@ TARGET=""
 ENV_TARGET="all"
 YES=0
 DRY_RUN=0
-STRICT=0
+_STRICT=0
 
 declare -a STEP_FAILS=()
 declare -a TARGET_MCP_FILES=()
@@ -196,7 +196,7 @@ parse_args() {
       --mode) MODE="${2:-}"; shift 2 ;;
       --target) TARGET="${2:-}"; shift 2 ;;
       --env) ENV_TARGET="${2:-}"; shift 2 ;;
-      --strict) STRICT=1; shift ;;
+      --strict) _STRICT=1; shift ;;
       --yes) YES=1; shift ;;
       --dry-run) DRY_RUN=1; shift ;;
       -h|--help) usage; exit 0 ;;
